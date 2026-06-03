@@ -63,11 +63,26 @@ public class AuthService {
         // Generate Token
         String token = jwtUtil.generateToken(savedUser.getId(), savedUser.getEmail(), savedUser.getRole().name());
 
-        return AuthResponse.builder()
-                .token(token)
-                .userId(savedUser.getId())
+        UUID storeId = null;
+        if (savedUser.getRole() == Role.OUTLET_OWNER) {
+            storeId = storeRepository.findByUserId(savedUser.getId())
+                    .map(Store::getId)
+                    .orElse(null);
+        }
+
+        AuthResponse.UserDto userDto = AuthResponse.UserDto.builder()
+                .id(savedUser.getId())
                 .email(savedUser.getEmail())
                 .role(savedUser.getRole())
+                .name(savedUser.getEmail().split("@")[0])
+                .storeId(storeId)
+                .avatarUrl(null)
+                .isActive(savedUser.getIsactive())
+                .build();
+
+        return AuthResponse.builder()
+                .token(token)
+                .user(userDto)
                 .build();
     }
 
@@ -87,11 +102,26 @@ public class AuthService {
         // Generate Token
         String token = jwtUtil.generateToken(user.getId(), user.getEmail(), user.getRole().name());
 
-        return AuthResponse.builder()
-                .token(token)
-                .userId(user.getId())
+        UUID storeId = null;
+        if (user.getRole() == Role.OUTLET_OWNER) {
+            storeId = storeRepository.findByUserId(user.getId())
+                    .map(Store::getId)
+                    .orElse(null);
+        }
+
+        AuthResponse.UserDto userDto = AuthResponse.UserDto.builder()
+                .id(user.getId())
                 .email(user.getEmail())
                 .role(user.getRole())
+                .name(user.getEmail().split("@")[0])
+                .storeId(storeId)
+                .avatarUrl(null)
+                .isActive(user.getIsactive())
+                .build();
+
+        return AuthResponse.builder()
+                .token(token)
+                .user(userDto)
                 .build();
     }
 }

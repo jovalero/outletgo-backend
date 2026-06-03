@@ -1,5 +1,6 @@
 package com.outletgo.backend.dto;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.outletgo.backend.entity.User.Role;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -13,7 +14,21 @@ import java.util.UUID;
 @AllArgsConstructor
 public class AuthResponse {
     private String token;
-    private UUID userId;
-    private String email;
-    private Role role;
+    private UserDto user;
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class UserDto {
+        private UUID id;
+        private String email;
+        private Role role;
+        private String name;
+        private UUID storeId;
+        private String avatarUrl;
+        
+        @JsonProperty("isActive")
+        private boolean isActive;
+    }
 }
