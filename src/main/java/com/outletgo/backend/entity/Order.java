@@ -17,9 +17,13 @@ public class Order {
     public enum OrderStatus {
         PENDING,
         PAID,
-        CANCELLED,
+        PREPARING,
+        READY_FOR_PICKUP,
         SHIPPED,
-        DELIVERED
+        DELIVERED,
+        CANCELLED,
+        CANCELED,
+        STOCK_ISSUE
     }
 
     @Id
