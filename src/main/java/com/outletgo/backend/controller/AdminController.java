@@ -163,6 +163,16 @@ public class AdminController {
                 .build();
         moderationHistoryRepository.save(mh);
 
+        // Resolve all reports associated with this product
+        List<Report> reports = reportRepository.findByProductId(product.getId());
+        for (Report report : reports) {
+            if (report.getStatus() != Report.ReportStatus.DISMISSED) {
+                report.setStatus(Report.ReportStatus.RESOLVED);
+                report.setResolutionType("DISABLED");
+                reportRepository.save(report);
+            }
+        }
+
         return ResponseEntity.ok(mapToAdminProductResponse(product));
     }
 
@@ -570,6 +580,28 @@ public class AdminController {
         user.setIsactive(body.isActive());
         userRepository.save(user);
 
+        if (!user.getIsactive()) {
+            // Disabling the store: resolve all associated reports
+            List<Report> reports = reportRepository.findByStoreIdOrProductStoreId(store.getId());
+            for (Report report : reports) {
+                if (report.getStatus() != Report.ReportStatus.DISMISSED) {
+                    report.setStatus(Report.ReportStatus.RESOLVED);
+                    report.setResolutionType("DISABLED");
+                    reportRepository.save(report);
+                }
+            }
+        } else {
+            // Reactivating the store: reset reports that were resolved by disabling
+            List<Report> reports = reportRepository.findByStoreIdOrProductStoreId(store.getId());
+            for (Report report : reports) {
+                if (report.getStatus() == Report.ReportStatus.RESOLVED && "DISABLED".equals(report.getResolutionType())) {
+                    report.setStatus(Report.ReportStatus.DISMISSED);
+                    report.setResolutionType("DISMISSED");
+                    reportRepository.save(report);
+                }
+            }
+        }
+
         return ResponseEntity.ok(mapToSellerAccountResponse(store));
     }
 
@@ -696,9 +728,15 @@ public class AdminController {
                 .build();
         moderationHistoryRepository.save(mh);
 
-        report.setStatus(Report.ReportStatus.RESOLVED);
-        report.setResolutionType("DISABLED");
-        reportRepository.save(report);
+        // Resolve all reports associated with this product
+        List<Report> reports = reportRepository.findByProductId(product.getId());
+        for (Report r : reports) {
+            if (r.getStatus() != Report.ReportStatus.DISMISSED) {
+                r.setStatus(Report.ReportStatus.RESOLVED);
+                r.setResolutionType("DISABLED");
+                reportRepository.save(r);
+            }
+        }
 
         return ResponseEntity.ok(mapToProductReportResponse(report));
     }
@@ -718,9 +756,15 @@ public class AdminController {
         user.setIsactive(false);
         userRepository.save(user);
 
-        report.setStatus(Report.ReportStatus.RESOLVED);
-        report.setResolutionType("DISABLED");
-        reportRepository.save(report);
+        // Resolve all reports associated with this store and its products
+        List<Report> reports = reportRepository.findByStoreIdOrProductStoreId(store.getId());
+        for (Report r : reports) {
+            if (r.getStatus() != Report.ReportStatus.DISMISSED) {
+                r.setStatus(Report.ReportStatus.RESOLVED);
+                r.setResolutionType("DISABLED");
+                reportRepository.save(r);
+            }
+        }
 
         return ResponseEntity.ok(mapToStoreReportResponse(report));
     }
