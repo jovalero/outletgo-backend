@@ -1,0 +1,27 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: outletgo-backend
+    ports:
+      - "8080:8080"
+    env_file:
+      - .env
+    environment:
+      - spring.profiles.active=dev
+
+  frontend:
+    build:
+      context: ../../Outletgo-Web
+      dockerfile: Dockerfile
+      args:
+        # The browser client will talk to the backend exposed on localhost:8080
+        - VITE_BACKEND_URL=http://localhost:8080
+    container_name: outletgo-frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
