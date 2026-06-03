@@ -183,6 +183,16 @@ public class AdminController {
                 .build();
         moderationHistoryRepository.save(mh);
 
+        // Update associated product reports that were resolved by disabling the product
+        List<Report> reports = reportRepository.findByProductId(product.getId());
+        for (Report report : reports) {
+            if (report.getStatus() == Report.ReportStatus.RESOLVED && "DISABLED".equals(report.getResolutionType())) {
+                report.setStatus(Report.ReportStatus.DISMISSED);
+                report.setResolutionType("DISMISSED");
+                reportRepository.save(report);
+            }
+        }
+
         return ResponseEntity.ok(mapToAdminProductResponse(product));
     }
 

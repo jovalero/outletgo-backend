@@ -8,10 +8,14 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import java.util.List;
 import java.util.UUID;
 
 @Repository
 public interface ReportRepository extends JpaRepository<Report, UUID> {
+
+    List<Report> findByProductId(UUID productId);
+
 
     @Query("SELECT r FROM Report r WHERE r.product IS NOT NULL AND " +
            "(:status IS NULL OR r.status = :status) AND " +
