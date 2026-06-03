@@ -1449,6 +1449,7 @@ public class AdminController {
         public static class StoreDto {
             private UUID id;
             private String businessName;
+            @JsonProperty("isActive")
             private boolean isActive;
         }
     }
@@ -1553,6 +1554,7 @@ public class AdminController {
     @NoArgsConstructor
     @AllArgsConstructor
     public static class ToggleReviewVisibilityRequest {
+        @JsonProperty("isVisible")
         private boolean isVisible;
     }
 
@@ -1560,6 +1562,7 @@ public class AdminController {
     @NoArgsConstructor
     @AllArgsConstructor
     public static class ToggleStatusRequest {
+        @JsonProperty("isActive")
         private boolean isActive;
         private String reason;
     }
