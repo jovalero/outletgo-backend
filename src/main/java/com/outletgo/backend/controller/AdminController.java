@@ -1531,4 +1531,154 @@ public class AdminController {
             private Double refundedAmount;
         }
     }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class DisableProductRequest {
+        private String reason;
+    }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class ToggleReviewVisibilityRequest {
+        private boolean isVisible;
+    }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class ToggleStatusRequest {
+        private boolean isActive;
+        private String reason;
+    }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class CreateSellerAccountRequest {
+        private String email;
+        private String businessName;
+        private String cuit;
+        private String address;
+        private String description;
+    }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class UpdateSellerAccountRequest {
+        private String email;
+        private String businessName;
+        private String cuit;
+        private String address;
+        private String description;
+        private String headerImageUrl;
+    }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class DismissReportRequest {
+        private String reason;
+    }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class DisableReportedProductRequest {
+        private UUID productId;
+        private String reason;
+    }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class DisableReportedStoreRequest {
+        private UUID storeId;
+        private String reason;
+    }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class WarnSellerRequest {
+        private String message;
+    }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class ForceStatusRequest {
+        private String status;
+        private String reason;
+    }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class RefundSliceRequest {
+        private UUID sliceId;
+        private Double amount;
+        private String reason;
+    }
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class RefundResponse {
+        private boolean success;
+        private String mpRefundId;
+        private Double refundedAmount;
+        private String message;
+    }
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class SupportConversationResponse {
+        private UUID storeId;
+        private String businessName;
+        private String sellerEmail;
+        private String sellerName;
+        private LastMessageDto lastMessage;
+        private int unreadCount;
+
+        @Data
+        @Builder
+        @NoArgsConstructor
+        @AllArgsConstructor
+        public static class LastMessageDto {
+            private String content;
+            private String attachmentType;
+            private String sentAt;
+            private String senderRole;
+        }
+    }
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class SupportMessageResponse {
+        private UUID id;
+        private UUID senderId;
+        private String senderRole;
+        private String content;
+        private String attachmentUrl;
+        private String attachmentType;
+        private String sentAt;
+    }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class SendSupportRequest {
+        private String content;
+        private String attachmentUrl;
+        private String attachmentType;
+    }
 }
