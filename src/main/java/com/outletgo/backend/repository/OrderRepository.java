@@ -20,7 +20,7 @@ public interface OrderRepository extends JpaRepository<Order, UUID> {
            "LEFT JOIN OrderStore os ON os.order = o " +
            "WHERE " +
            "(:searchId IS NULL OR o.id = :searchId) AND " +
-           "(:search IS NULL OR LOWER(o.client.email) LIKE LOWER(CONCAT('%', :search, '%')) OR LOWER(o.shippingAddress) LIKE LOWER(CONCAT('%', :search, '%')) OR LOWER(os.store.businessName) LIKE LOWER(CONCAT('%', :search, '%'))) AND " +
+           "(:search IS NULL OR LOWER(o.client.email) LIKE :search OR LOWER(o.shippingAddress) LIKE :search OR LOWER(os.store.businessName) LIKE :search) AND " +
            "(:status IS NULL OR os.status = :status) AND " +
            "(:storeId IS NULL OR os.store.id = :storeId) AND " +
            "(CAST(:startDate AS timestamp) IS NULL OR o.orderDate >= :startDate) AND " +

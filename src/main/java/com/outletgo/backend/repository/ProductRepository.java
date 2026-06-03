@@ -18,7 +18,7 @@ public interface ProductRepository extends JpaRepository<Product, UUID> {
     List<Product> findByIsactiveTrue();
 
     @Query("SELECT p FROM Product p WHERE " +
-           "(:search IS NULL OR LOWER(p.name) LIKE LOWER(CONCAT('%', :search, '%'))) AND " +
+           "(:search IS NULL OR LOWER(p.name) LIKE :search) AND " +
            "(:isactive IS NULL OR p.isactive = :isactive) AND " +
            "(:storeId IS NULL OR p.store.id = :storeId)")
     Page<Product> searchProductsAdmin(

@@ -24,7 +24,7 @@ public interface ReviewRepository extends JpaRepository<Review, UUID> {
            "(:productId IS NULL OR r.product.id = :productId) AND " +
            "(:isVisible IS NULL OR r.isVisible = :isVisible) AND " +
            "(:rating IS NULL OR r.rating = :rating) AND " +
-           "(:search IS NULL OR LOWER(r.user.email) LIKE LOWER(CONCAT('%', :search, '%')))")
+           "(:search IS NULL OR LOWER(r.user.email) LIKE :search)")
     Page<Review> searchReviewsAdmin(
             @Param("scope") String scope,
             @Param("storeId") UUID storeId,

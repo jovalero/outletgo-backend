@@ -17,7 +17,7 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     boolean existsByEmail(String email);
 
     @Query("SELECT u FROM User u WHERE u.role = 'CLIENT' AND " +
-           "(:search IS NULL OR LOWER(u.email) LIKE LOWER(CONCAT('%', :search, '%'))) AND " +
+           "(:search IS NULL OR LOWER(u.email) LIKE :search) AND " +
            "(:isactive IS NULL OR u.isactive = :isactive)")
     Page<User> searchBuyersAdmin(
             @Param("search") String search,

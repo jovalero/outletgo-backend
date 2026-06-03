@@ -17,7 +17,7 @@ public interface ReportRepository extends JpaRepository<Report, UUID> {
            "(:status IS NULL OR r.status = :status) AND " +
            "(:storeId IS NULL OR r.product.store.id = :storeId) AND " +
            "(:productId IS NULL OR r.product.id = :productId) AND " +
-           "(:search IS NULL OR LOWER(r.reason) LIKE LOWER(CONCAT('%', :search, '%')) OR LOWER(r.product.name) LIKE LOWER(CONCAT('%', :search, '%')))")
+           "(:search IS NULL OR LOWER(r.reason) LIKE :search OR LOWER(r.product.name) LIKE :search)")
     Page<Report> searchProductReportsAdmin(
             @Param("status") Report.ReportStatus status,
             @Param("storeId") UUID storeId,
@@ -28,7 +28,7 @@ public interface ReportRepository extends JpaRepository<Report, UUID> {
     @Query("SELECT r FROM Report r WHERE r.store IS NOT NULL AND " +
            "(:status IS NULL OR r.status = :status) AND " +
            "(:storeId IS NULL OR r.store.id = :storeId) AND " +
-           "(:search IS NULL OR LOWER(r.reason) LIKE LOWER(CONCAT('%', :search, '%')) OR LOWER(r.store.businessName) LIKE LOWER(CONCAT('%', :search, '%')))")
+           "(:search IS NULL OR LOWER(r.reason) LIKE :search OR LOWER(r.store.businessName) LIKE :search)")
     Page<Report> searchStoreReportsAdmin(
             @Param("status") Report.ReportStatus status,
             @Param("storeId") UUID storeId,

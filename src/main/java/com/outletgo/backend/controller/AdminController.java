@@ -115,8 +115,9 @@ public class AdminController {
             isactive = false;
         }
 
+        String formattedSearch = (search != null && !search.trim().isEmpty()) ? "%" + search.trim().toLowerCase() + "%" : null;
         Pageable pageable = PageRequest.of(page, size);
-        Page<Product> productPage = productRepository.searchProductsAdmin(search, isactive, storeId, pageable);
+        Page<Product> productPage = productRepository.searchProductsAdmin(formattedSearch, isactive, storeId, pageable);
 
         List<AdminProductResponse> mapped = productPage.getContent().stream()
                 .map(this::mapToAdminProductResponse)
@@ -253,8 +254,9 @@ public class AdminController {
             @RequestParam(required = false) Integer rating,
             @RequestParam(required = false) Boolean isVisible) {
 
+        String formattedSearch = (buyerSearch != null && !buyerSearch.trim().isEmpty()) ? "%" + buyerSearch.trim().toLowerCase() + "%" : null;
         Pageable pageable = PageRequest.of(page, size);
-        Page<Review> reviewPage = reviewRepository.searchReviewsAdmin(reviewScope, storeId, productId, isVisible, rating, buyerSearch, pageable);
+        Page<Review> reviewPage = reviewRepository.searchReviewsAdmin(reviewScope, storeId, productId, isVisible, rating, formattedSearch, pageable);
 
         List<AdminReviewResponse> mapped = reviewPage.getContent().stream()
                 .map(this::mapToAdminReviewResponse)
@@ -362,8 +364,9 @@ public class AdminController {
             @RequestParam(required = false) String search,
             @RequestParam(required = false) Boolean isActive) {
 
+        String formattedSearch = (search != null && !search.trim().isEmpty()) ? "%" + search.trim().toLowerCase() + "%" : null;
         Pageable pageable = PageRequest.of(page, size);
-        Page<User> buyersPage = userRepository.searchBuyersAdmin(search, isActive, pageable);
+        Page<User> buyersPage = userRepository.searchBuyersAdmin(formattedSearch, isActive, pageable);
 
         List<BuyerAccountResponse> mapped = buyersPage.getContent().stream()
                 .map(u -> {
@@ -461,8 +464,9 @@ public class AdminController {
             @RequestParam(required = false) String search,
             @RequestParam(required = false) Boolean isActive) {
 
+        String formattedSearch = (search != null && !search.trim().isEmpty()) ? "%" + search.trim().toLowerCase() + "%" : null;
         Pageable pageable = PageRequest.of(page, size);
-        Page<Store> sellersPage = storeRepository.searchSellersAdmin(search, isActive, pageable);
+        Page<Store> sellersPage = storeRepository.searchSellersAdmin(formattedSearch, isActive, pageable);
 
         List<SellerAccountResponse> mapped = sellersPage.getContent().stream()
                 .map(this::mapToSellerAccountResponse)
@@ -598,8 +602,9 @@ public class AdminController {
             }
         }
 
+        String formattedSearch = (search != null && !search.trim().isEmpty()) ? "%" + search.trim().toLowerCase() + "%" : null;
         Pageable pageable = PageRequest.of(page, size);
-        Page<Report> reportPage = reportRepository.searchProductReportsAdmin(statusEnum, storeId, productId, search, pageable);
+        Page<Report> reportPage = reportRepository.searchProductReportsAdmin(statusEnum, storeId, productId, formattedSearch, pageable);
 
         List<ProductReportResponse> mapped = reportPage.getContent().stream()
                 .map(this::mapToProductReportResponse)
@@ -625,8 +630,9 @@ public class AdminController {
             }
         }
 
+        String formattedSearch = (search != null && !search.trim().isEmpty()) ? "%" + search.trim().toLowerCase() + "%" : null;
         Pageable pageable = PageRequest.of(page, size);
-        Page<Report> reportPage = reportRepository.searchStoreReportsAdmin(statusEnum, storeId, search, pageable);
+        Page<Report> reportPage = reportRepository.searchStoreReportsAdmin(statusEnum, storeId, formattedSearch, pageable);
 
         List<StoreReportResponse> mapped = reportPage.getContent().stream()
                 .map(this::mapToStoreReportResponse)
@@ -836,8 +842,9 @@ public class AdminController {
             }
         }
 
+        String formattedSearch = (search != null && !search.trim().isEmpty()) ? "%" + search.trim().toLowerCase() + "%" : null;
         Pageable pageable = PageRequest.of(page, size);
-        Page<Order> orderPage = orderRepository.searchOrdersAdmin(searchId, search, statusEnum, storeId, startDateTime, endDateTime, pageable);
+        Page<Order> orderPage = orderRepository.searchOrdersAdmin(searchId, formattedSearch, statusEnum, storeId, startDateTime, endDateTime, pageable);
 
         List<AdminOrderResponse> mapped = orderPage.getContent().stream()
                 .map(this::mapToAdminOrderResponse)

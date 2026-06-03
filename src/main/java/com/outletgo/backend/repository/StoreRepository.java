@@ -16,7 +16,7 @@ public interface StoreRepository extends JpaRepository<Store, UUID> {
     Optional<Store> findByUserId(UUID userId);
 
     @Query("SELECT s FROM Store s WHERE " +
-           "(:search IS NULL OR LOWER(s.businessName) LIKE LOWER(CONCAT('%', :search, '%')) OR LOWER(s.user.email) LIKE LOWER(CONCAT('%', :search, '%'))) AND " +
+           "(:search IS NULL OR LOWER(s.businessName) LIKE :search OR LOWER(s.user.email) LIKE :search) AND " +
            "(:isactive IS NULL OR s.user.isactive = :isactive)")
     Page<Store> searchSellersAdmin(
             @Param("search") String search,
