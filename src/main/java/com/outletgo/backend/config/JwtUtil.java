@@ -34,6 +34,17 @@ public class JwtUtil {
                 .compact();
     }
 
+    public String generateServiceRoleToken() {
+        long expirationTimeMs = 31536000000L; // 1 year
+        return Jwts.builder()
+                .claim("role", "service_role")
+                .claim("iss", "supabase")
+                .issuedAt(new Date())
+                .expiration(new Date(System.currentTimeMillis() + expirationTimeMs))
+                .signWith(getSigningKey())
+                .compact();
+    }
+
     public Claims validateToken(String token) {
         return Jwts.parser()
                 .verifyWith(getSigningKey())
