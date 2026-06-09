@@ -560,6 +560,7 @@ public class AdminController {
         if (body.getAddress() != null) store.setAddress(body.getAddress());
         if (body.getDescription() != null) store.setDescription(body.getDescription());
         if (body.getHeaderImageUrl() != null) store.setHeaderImage(body.getHeaderImageUrl());
+        if (body.getLogoUrl() != null) store.setHeaderImage(body.getLogoUrl());
         storeRepository.save(store);
 
         return ResponseEntity.ok(mapToSellerAccountResponse(store));
@@ -1729,6 +1730,7 @@ public class AdminController {
         private String address;
         private String description;
         private String headerImageUrl;
+        private String logoUrl;
     }
 
     @Data
