@@ -923,6 +923,21 @@ public class AdminController {
         return ResponseEntity.ok(mapToAdminOrderResponse(order));
     }
 
+    @PatchMapping("/api/admin/orders/{id}/status")
+    public ResponseEntity<AdminOrderResponse> updateOrderStatus(
+            @PathVariable UUID id,
+            @RequestBody UpdateOrderStatusRequest body) {
+        Order order = orderRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Orden no encontrada"));
+        try {
+            order.setStatus(Order.OrderStatus.valueOf(body.getStatus().toUpperCase()));
+        } catch (Exception e) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Estado de orden inválido");
+        }
+        orderRepository.save(order);
+        return ResponseEntity.ok(mapToAdminOrderResponse(order));
+    }
+
     @PostMapping("/api/admin/orders/slices/{sliceId}/force-status")
     public ResponseEntity<AdminOrderStoreResponse> forceSliceStatus(
             @PathVariable UUID sliceId,
@@ -1752,6 +1767,13 @@ public class AdminController {
     public static class ForceStatusRequest {
         private String status;
         private String reason;
+    }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class UpdateOrderStatusRequest {
+        private String status;
     }
 
     @Data
