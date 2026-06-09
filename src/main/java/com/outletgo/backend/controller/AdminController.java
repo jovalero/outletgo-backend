@@ -631,6 +631,21 @@ public class AdminController {
 
     private SellerAccountResponse mapToSellerAccountResponse(Store s) {
         User u = s.getUser();
+        Double latitude = null;
+        Double longitude = null;
+        String coord = s.getLocationCoord();
+        if (coord != null && coord.contains(",")) {
+            try {
+                String[] parts = coord.split(",");
+                if (parts.length >= 2) {
+                    latitude = Double.parseDouble(parts[0].trim());
+                    longitude = Double.parseDouble(parts[1].trim());
+                }
+            } catch (NumberFormatException e) {
+                // Ignore format errors
+            }
+        }
+
         return SellerAccountResponse.builder()
                 .id(u.getId())
                 .email(u.getEmail())
@@ -643,8 +658,11 @@ public class AdminController {
                         .address(s.getAddress())
                         .description(s.getDescription())
                         .headerImageUrl(s.getHeaderImage())
+                        .logoUrl(s.getHeaderImage())
                         .ratingAvg(s.getRatingAvg())
                         .ratingCount(s.getRatingCount())
+                        .latitude(latitude)
+                        .longitude(longitude)
                         .build())
                 .build();
     }
@@ -1502,8 +1520,11 @@ public class AdminController {
             private String address;
             private String description;
             private String headerImageUrl;
+            private String logoUrl;
             private Double ratingAvg;
             private Integer ratingCount;
+            private Double latitude;
+            private Double longitude;
         }
     }
 
