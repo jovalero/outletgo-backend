@@ -518,7 +518,12 @@ public class AdminController {
                 .build();
         User savedUser = userRepository.save(sellerUser);
 
-        String locationCoord = geocodeAddress(body.getAddress());
+        String locationCoord = null;
+        if (body.getLatitude() != null && body.getLongitude() != null) {
+            locationCoord = body.getLatitude() + "," + body.getLongitude();
+        } else {
+            locationCoord = geocodeAddress(body.getAddress());
+        }
         Store store = Store.builder()
                 .user(savedUser)
                 .businessName(body.getBusinessName())
@@ -578,7 +583,12 @@ public class AdminController {
         if (body.getCuit() != null) store.setCuit(body.getCuit());
         if (body.getAddress() != null) {
             store.setAddress(body.getAddress());
-            String locationCoord = geocodeAddress(body.getAddress());
+            String locationCoord = null;
+            if (body.getLatitude() != null && body.getLongitude() != null) {
+                locationCoord = body.getLatitude() + "," + body.getLongitude();
+            } else {
+                locationCoord = geocodeAddress(body.getAddress());
+            }
             if (locationCoord != null) {
                 store.setLocationCoord(locationCoord);
             }
@@ -1810,6 +1820,8 @@ public class AdminController {
         private String cuit;
         private String address;
         private String description;
+        private Double latitude;
+        private Double longitude;
     }
 
     @Data
@@ -1823,6 +1835,8 @@ public class AdminController {
         private String description;
         private String headerImageUrl;
         private String logoUrl;
+        private Double latitude;
+        private Double longitude;
     }
 
     @Data
