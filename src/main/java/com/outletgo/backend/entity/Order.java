@@ -58,6 +58,15 @@ public class Order {
     @Column(name = "shipping_address", length = 255)
     private String shippingAddress;
 
+    @Column(name = "product_subtotal")
+    private Double productSubtotal;
+
+    @Column(name = "shipping_cost")
+    private Double shippingCost;
+
+    @Column(name = "service_fee")
+    private Double serviceFee;
+
     @PrePersist
     protected void onCreate() {
         if (orderDate == null) {

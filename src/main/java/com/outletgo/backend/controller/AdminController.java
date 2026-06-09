@@ -65,6 +65,12 @@ public class AdminController {
     private ChatMessageRepository chatMessageRepository;
 
     @Autowired
+    private PickupPointRepository pickupPointRepository;
+
+    @Autowired
+    private ServiceFeeRuleRepository serviceFeeRuleRepository;
+
+    @Autowired
     private PasswordEncoder passwordEncoder;
 
     @Autowired
@@ -962,14 +968,19 @@ public class AdminController {
                     List<OrderItem> items = orderItemRepository.findByOrderStoreId(slice.getId());
 
                     List<AdminOrderResponse.AdminOrderStoreDto.LineItemDto> itemDtos = items.stream()
-                            .map(item -> AdminOrderResponse.AdminOrderStoreDto.LineItemDto.builder()
-                                    .id(item.getId())
-                                    .productName(item.getVariation().getProduct().getName())
-                                    .size(item.getVariation().getSize())
-                                    .color(item.getVariation().getColor())
-                                    .quantity(item.getQuantity())
-                                    .unitPrice(item.getUnitPrice())
-                                    .build())
+                            .map(item -> {
+                                String imgUrl = productImageRepository.findByProductId(item.getVariation().getProduct().getId())
+                                        .stream().findFirst().map(ProductImage::getImageUrl).orElse(null);
+                                return AdminOrderResponse.AdminOrderStoreDto.LineItemDto.builder()
+                                        .id(item.getId())
+                                        .productName(item.getVariation().getProduct().getName())
+                                        .size(item.getVariation().getSize())
+                                        .color(item.getVariation().getColor())
+                                        .quantity(item.getQuantity())
+                                        .unitPrice(item.getUnitPrice())
+                                        .imageUrl(imgUrl)
+                                        .build();
+                            })
                             .collect(Collectors.toList());
 
                     AdminOrderResponse.AdminOrderStoreDto.RefundDto refund = null;
@@ -984,19 +995,37 @@ public class AdminController {
 
                     return AdminOrderResponse.AdminOrderStoreDto.builder()
                             .id(slice.getId())
-                            .storeId(slice.getStore().getId())
-                            .businessName(slice.getStore().getBusinessName())
+                            .storeStatus(sliceStatus)
                             .status(sliceStatus)
+                            .storeName(slice.getStore().getBusinessName())
+                            .businessName(slice.getStore().getBusinessName())
+                            .grossAmount(slice.getSubtotalAmount())
                             .subtotalArs(slice.getSubtotalAmount())
+                            .commissionRate(slice.getCommissionRate() != null ? slice.getCommissionRate() : 0.1)
+                            .commissionAmount(slice.getCommissionAmount() != null ? slice.getCommissionAmount() : 0.0)
+                            .netAmount(slice.getNetAmount() != null ? slice.getNetAmount() : slice.getSubtotalAmount())
+                            .payoutStatus(slice.getPayoutStatus())
+                            .paidAt(slice.getPaidAt() != null ? slice.getPaidAt().toString() : null)
+                            .store(new AdminOrderResponse.AdminOrderStoreDto.StoreDto(slice.getStore().getId(), slice.getStore().getBusinessName()))
                             .items(itemDtos)
                             .refund(refund)
                             .build();
                 })
                 .collect(Collectors.toList());
 
+        String globalStatus = o.getStatus().name();
+        if ("CANCELLED".equals(globalStatus)) {
+            globalStatus = "CANCELED";
+        }
+
         return AdminOrderResponse.builder()
                 .id(o.getId())
+                .status(globalStatus)
+                .createdAt(o.getOrderDate().toString())
                 .orderDate(o.getOrderDate().toString())
+                .productSubtotal(o.getProductSubtotal() != null ? o.getProductSubtotal() : o.getTotalAmount())
+                .shippingCost(o.getShippingCost() != null ? o.getShippingCost() : 0.0)
+                .serviceFee(o.getServiceFee() != null ? o.getServiceFee() : 0.0)
                 .totalArs(o.getTotalAmount())
                 .mpPreferenceId(o.getMpPreferenceId())
                 .buyer(new AdminOrderResponse.BuyerDto(
@@ -1011,14 +1040,19 @@ public class AdminController {
     private AdminOrderStoreResponse mapToAdminOrderStoreResponse(OrderStore slice) {
         List<OrderItem> items = orderItemRepository.findByOrderStoreId(slice.getId());
         List<AdminOrderStoreResponse.LineItemDto> itemDtos = items.stream()
-                .map(item -> AdminOrderStoreResponse.LineItemDto.builder()
-                        .id(item.getId())
-                        .productName(item.getVariation().getProduct().getName())
-                        .size(item.getVariation().getSize())
-                        .color(item.getVariation().getColor())
-                        .quantity(item.getQuantity())
-                        .unitPrice(item.getUnitPrice())
-                        .build())
+                .map(item -> {
+                    String imgUrl = productImageRepository.findByProductId(item.getVariation().getProduct().getId())
+                            .stream().findFirst().map(ProductImage::getImageUrl).orElse(null);
+                    return AdminOrderStoreResponse.LineItemDto.builder()
+                            .id(item.getId())
+                            .productName(item.getVariation().getProduct().getName())
+                            .size(item.getVariation().getSize())
+                            .color(item.getVariation().getColor())
+                            .quantity(item.getQuantity())
+                            .unitPrice(item.getUnitPrice())
+                            .imageUrl(imgUrl)
+                            .build();
+                })
                 .collect(Collectors.toList());
 
         AdminOrderStoreResponse.RefundDto refund = null;
@@ -1035,8 +1069,16 @@ public class AdminController {
                 .id(slice.getId())
                 .storeId(slice.getStore().getId())
                 .businessName(slice.getStore().getBusinessName())
+                .storeName(slice.getStore().getBusinessName())
+                .storeStatus(sliceStatus)
                 .status(sliceStatus)
+                .grossAmount(slice.getSubtotalAmount())
                 .subtotalArs(slice.getSubtotalAmount())
+                .commissionRate(slice.getCommissionRate() != null ? slice.getCommissionRate() : 0.1)
+                .commissionAmount(slice.getCommissionAmount() != null ? slice.getCommissionAmount() : 0.0)
+                .netAmount(slice.getNetAmount() != null ? slice.getNetAmount() : slice.getSubtotalAmount())
+                .payoutStatus(slice.getPayoutStatus())
+                .paidAt(slice.getPaidAt() != null ? slice.getPaidAt().toString() : null)
                 .items(itemDtos)
                 .refund(refund)
                 .build();
@@ -1514,7 +1556,12 @@ public class AdminController {
     @AllArgsConstructor
     public static class AdminOrderResponse {
         private UUID id;
+        private String status;
+        private String createdAt;
         private String orderDate;
+        private Double productSubtotal;
+        private Double shippingCost;
+        private Double serviceFee;
         private Double totalArs;
         private String mpPreferenceId;
         private BuyerDto buyer;
@@ -1534,12 +1581,27 @@ public class AdminController {
         @AllArgsConstructor
         public static class AdminOrderStoreDto {
             private UUID id;
-            private UUID storeId;
-            private String businessName;
+            private String storeStatus;
             private String status;
+            private String storeName;
+            private String businessName;
+            private Double grossAmount;
             private Double subtotalArs;
+            private Double commissionRate;
+            private Double commissionAmount;
+            private Double netAmount;
+            private String payoutStatus;
+            private String paidAt;
+            private StoreDto store;
             private List<LineItemDto> items;
             private RefundDto refund;
+
+            @Data
+            @AllArgsConstructor
+            public static class StoreDto {
+                private UUID id;
+                private String businessName;
+            }
 
             @Data
             @Builder
@@ -1552,6 +1614,7 @@ public class AdminController {
                 private String color;
                 private int quantity;
                 private Double unitPrice;
+                private String imageUrl;
             }
 
             @Data
@@ -1571,8 +1634,16 @@ public class AdminController {
         private UUID id;
         private UUID storeId;
         private String businessName;
+        private String storeName;
+        private String storeStatus;
         private String status;
+        private Double grossAmount;
         private Double subtotalArs;
+        private Double commissionRate;
+        private Double commissionAmount;
+        private Double netAmount;
+        private String payoutStatus;
+        private String paidAt;
         private List<LineItemDto> items;
         private RefundDto refund;
 
@@ -1587,6 +1658,7 @@ public class AdminController {
             private String color;
             private int quantity;
             private Double unitPrice;
+            private String imageUrl;
         }
 
         @Data
@@ -1747,5 +1819,289 @@ public class AdminController {
         private String content;
         private String attachmentUrl;
         private String attachmentType;
+    }
+
+    // ==========================================
+    // 9. PICKUP POINTS (SHIPPING)
+    // ==========================================
+
+    @GetMapping("/api/admin/shipping/pickup-points")
+    public ResponseEntity<Page<PickupPoint>> getPickupPoints(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) Boolean isActive) {
+
+        String formattedSearch = (search != null && !search.trim().isEmpty()) ? "%" + search.trim().toLowerCase() + "%" : null;
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.ASC, "name"));
+        Page<PickupPoint> result = pickupPointRepository.searchPickupPointsAdmin(isActive, formattedSearch, pageable);
+        return ResponseEntity.ok(result);
+    }
+
+    @PostMapping("/api/admin/shipping/pickup-points")
+    public ResponseEntity<PickupPoint> createPickupPoint(@RequestBody CreatePickupPointRequest body) {
+        PickupPoint pp = PickupPoint.builder()
+                .name(body.getName())
+                .address(body.getAddress())
+                .neighborhood(body.getNeighborhood())
+                .city(body.getCity())
+                .lat(body.getLat())
+                .lng(body.getLng())
+                .businessHours(body.getBusinessHours())
+                .isActive(true)
+                .build();
+        pickupPointRepository.save(pp);
+        return ResponseEntity.ok(pp);
+    }
+
+    @PatchMapping("/api/admin/shipping/pickup-points/{id}")
+    public ResponseEntity<PickupPoint> updatePickupPoint(
+            @PathVariable UUID id,
+            @RequestBody CreatePickupPointRequest body) {
+        PickupPoint pp = pickupPointRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Punto de retiro no encontrado"));
+        pp.setName(body.getName());
+        pp.setAddress(body.getAddress());
+        pp.setNeighborhood(body.getNeighborhood());
+        pp.setCity(body.getCity());
+        pp.setLat(body.getLat());
+        pp.setLng(body.getLng());
+        pp.setBusinessHours(body.getBusinessHours());
+        pickupPointRepository.save(pp);
+        return ResponseEntity.ok(pp);
+    }
+
+    @PatchMapping("/api/admin/shipping/pickup-points/{id}/status")
+    public ResponseEntity<PickupPoint> togglePickupPointStatus(
+            @PathVariable UUID id,
+            @RequestBody TogglePickupPointStatusRequest body) {
+        PickupPoint pp = pickupPointRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Punto de retiro no encontrado"));
+        pp.setIsActive(body.getIsActive());
+        pickupPointRepository.save(pp);
+        return ResponseEntity.ok(pp);
+    }
+
+    // ==========================================
+    // 10. SERVICE FEE RULES
+    // ==========================================
+
+    @GetMapping("/api/admin/service-fee-rules")
+    public ResponseEntity<Page<ServiceFeeRule>> getServiceFeeRules(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) Boolean isActive) {
+
+        String formattedSearch = (search != null && !search.trim().isEmpty()) ? "%" + search.trim().toLowerCase() + "%" : null;
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "priority").and(Sort.by(Sort.Direction.ASC, "name")));
+        Page<ServiceFeeRule> result = serviceFeeRuleRepository.searchServiceFeeRulesAdmin(isActive, formattedSearch, pageable);
+        return ResponseEntity.ok(result);
+    }
+
+    @PostMapping("/api/admin/service-fee-rules")
+    public ResponseEntity<ServiceFeeRule> createServiceFeeRule(@RequestBody CreateServiceFeeRuleRequest body) {
+        ServiceFeeRule rule = ServiceFeeRule.builder()
+                .name(body.getName())
+                .feeType(body.getFeeType())
+                .feeValue(body.getFeeValue())
+                .feeTarget(body.getFeeTarget())
+                .shippingMethod(body.getShippingMethod())
+                .minOrderAmount(body.getMinOrderAmount() != null ? body.getMinOrderAmount() : 0.0)
+                .isActive(body.getIsActive() != null ? body.getIsActive() : true)
+                .validFrom(body.getValidFrom() != null ? LocalDateTime.parse(body.getValidFrom().replace("Z", "")) : null)
+                .validUntil(body.getValidUntil() != null ? LocalDateTime.parse(body.getValidUntil().replace("Z", "")) : null)
+                .priority(body.getPriority() != null ? body.getPriority() : 0)
+                .build();
+        serviceFeeRuleRepository.save(rule);
+        return ResponseEntity.ok(rule);
+    }
+
+    @PatchMapping("/api/admin/service-fee-rules/{id}")
+    public ResponseEntity<ServiceFeeRule> updateServiceFeeRule(
+            @PathVariable UUID id,
+            @RequestBody CreateServiceFeeRuleRequest body) {
+        ServiceFeeRule rule = serviceFeeRuleRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Regla de tarifa no encontrada"));
+        rule.setName(body.getName());
+        rule.setFeeType(body.getFeeType());
+        rule.setFeeValue(body.getFeeValue());
+        rule.setFeeTarget(body.getFeeTarget());
+        rule.setShippingMethod(body.getShippingMethod());
+        rule.setMinOrderAmount(body.getMinOrderAmount() != null ? body.getMinOrderAmount() : 0.0);
+        rule.setIsActive(body.getIsActive() != null ? body.getIsActive() : true);
+        rule.setValidFrom(body.getValidFrom() != null ? LocalDateTime.parse(body.getValidFrom().replace("Z", "")) : null);
+        rule.setValidUntil(body.getValidUntil() != null ? LocalDateTime.parse(body.getValidUntil().replace("Z", "")) : null);
+        rule.setPriority(body.getPriority() != null ? body.getPriority() : 0);
+        serviceFeeRuleRepository.save(rule);
+        return ResponseEntity.ok(rule);
+    }
+
+    @PatchMapping("/api/admin/service-fee-rules/{id}/status")
+    public ResponseEntity<ServiceFeeRule> toggleServiceFeeRuleStatus(
+            @PathVariable UUID id,
+            @RequestBody ToggleServiceFeeRuleStatusRequest body) {
+        ServiceFeeRule rule = serviceFeeRuleRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Regla de tarifa no encontrada"));
+        rule.setIsActive(body.getIsActive());
+        serviceFeeRuleRepository.save(rule);
+        return ResponseEntity.ok(rule);
+    }
+
+    // ==========================================
+    // 11. ADMIN DASHBOARD STATS
+    // ==========================================
+
+    @GetMapping("/api/admin/dashboard")
+    public ResponseEntity<AdminDashboardResponse> getAdminDashboardStats() {
+        List<Order> allOrders = orderRepository.findAll();
+        
+        double totalGmv = 0.0;
+        double totalServiceFees = 0.0;
+        double totalCommissions = 0.0;
+        long totalOrdersCount = allOrders.size();
+        
+        for (Order o : allOrders) {
+            String status = o.getStatus().name();
+            if (!"CANCELED".equals(status) && !"CANCELLED".equals(status) && !"PENDING".equals(status)) {
+                totalGmv += o.getTotalAmount() != null ? o.getTotalAmount() : 0.0;
+                totalServiceFees += o.getServiceFee() != null ? o.getServiceFee() : 0.0;
+                
+                List<OrderStore> slices = orderStoreRepository.findByOrderId(o.getId());
+                for (OrderStore slice : slices) {
+                    if (slice.getStatus() != Order.OrderStatus.CANCELED && slice.getStatus() != Order.OrderStatus.CANCELLED) {
+                        totalCommissions += slice.getCommissionAmount() != null ? slice.getCommissionAmount() : 0.0;
+                    }
+                }
+            }
+        }
+        
+        long activeStoresCount = storeRepository.findAll().stream()
+                .filter(s -> s.getUser() != null && s.getUser().getIsactive())
+                .count();
+                
+        long pendingReportsCount = reportRepository.findAll().stream()
+                .filter(r -> r.getStatus() == Report.ReportStatus.PENDING)
+                .count();
+
+        long pendingRefundsCount = orderStoreRepository.findAll().stream()
+                .filter(slice -> (slice.getStatus() == Order.OrderStatus.CANCELED || slice.getStatus() == Order.OrderStatus.CANCELLED) && slice.getMpRefundId() == null)
+                .count();
+                
+        long stockIssuesCount = orderStoreRepository.findAll().stream()
+                .filter(slice -> slice.getStatus() == Order.OrderStatus.STOCK_ISSUE)
+                .count();
+                
+        List<Store> stores = storeRepository.findAll();
+        long unreadSupportConversationsCount = stores.stream()
+                .filter(store -> {
+                    List<ChatMessage> messages = chatMessageRepository.findByStoreIdOrderBySentAtAsc(store.getId());
+                    return messages.stream()
+                            .anyMatch(m -> (m.getSender().getRole() == User.Role.ADMIN || m.getReceiver().getRole() == User.Role.ADMIN) 
+                                    && m.getSender().getRole() == User.Role.OUTLET_OWNER);
+                })
+                .count();
+
+        // Get 5 most recent orders
+        Pageable recentPageable = PageRequest.of(0, 5, Sort.by(Sort.Direction.DESC, "orderDate"));
+        Page<Order> recentOrdersPage = orderRepository.findAll(recentPageable);
+        List<AdminOrderResponse> recentOrders = recentOrdersPage.getContent().stream()
+                .map(this::mapToAdminOrderResponse)
+                .collect(Collectors.toList());
+
+        AdminDashboardResponse response = AdminDashboardResponse.builder()
+                .totalGmv(totalGmv)
+                .totalCommissions(totalCommissions)
+                .totalServiceFees(totalServiceFees)
+                .totalOrdersCount(totalOrdersCount)
+                .activeStoresCount(activeStoresCount)
+                .pendingReportsCount(pendingReportsCount)
+                .pendingRefundsCount(pendingRefundsCount)
+                .stockIssuesCount(stockIssuesCount)
+                .unreadSupportConversationsCount(unreadSupportConversationsCount)
+                .recentOrders(recentOrders)
+                .build();
+
+        return ResponseEntity.ok(response);
+    }
+
+    // ==========================================
+    // REQUEST / RESPONSE DTO CLASSES
+    // ==========================================
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class CreatePickupPointRequest {
+        private String name;
+        private String address;
+        private String neighborhood;
+        private String city;
+        private Double lat;
+        private Double lng;
+        private String businessHours;
+    }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class TogglePickupPointStatusRequest {
+        @JsonProperty("isActive")
+        private boolean isActive;
+        private String reason;
+
+        public boolean getIsActive() {
+            return isActive;
+        }
+    }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class CreateServiceFeeRuleRequest {
+        private String name;
+        private String feeType;
+        private Double feeValue;
+        private String feeTarget;
+        private String shippingMethod;
+        private Double minOrderAmount;
+        @JsonProperty("isActive")
+        private Boolean isActive;
+        private String validFrom;
+        private String validUntil;
+        private Integer priority;
+
+        public Boolean getIsActive() {
+            return isActive;
+        }
+    }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class ToggleServiceFeeRuleStatusRequest {
+        @JsonProperty("isActive")
+        private boolean isActive;
+
+        public boolean getIsActive() {
+            return isActive;
+        }
+    }
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class AdminDashboardResponse {
+        private Double totalGmv;
+        private Double totalCommissions;
+        private Double totalServiceFees;
+        private long totalOrdersCount;
+        private long activeStoresCount;
+        private long pendingReportsCount;
+        private long pendingRefundsCount;
+        private long stockIssuesCount;
+        private long unreadSupportConversationsCount;
+        private List<AdminOrderResponse> recentOrders;
     }
 }

@@ -39,6 +39,22 @@ public class OrderStore {
     @Column(name = "mp_refund_id", length = 255)
     private String mpRefundId;
 
+    @Column(name = "commission_rate")
+    private Double commissionRate;
+
+    @Column(name = "commission_amount")
+    private Double commissionAmount;
+
+    @Column(name = "net_amount")
+    private Double netAmount;
+
+    @Column(name = "payout_status", length = 30)
+    @Builder.Default
+    private String payoutStatus = "PENDING";
+
+    @Column(name = "paid_at")
+    private java.time.LocalDateTime paidAt;
+
     @PrePersist
     protected void onCreate() {
         if (status == null) {
@@ -46,6 +62,9 @@ public class OrderStore {
         }
         if (refundAmount == null) {
             refundAmount = 0.0;
+        }
+        if (payoutStatus == null) {
+            payoutStatus = "PENDING";
         }
     }
 }
