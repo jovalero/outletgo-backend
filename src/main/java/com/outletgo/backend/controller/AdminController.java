@@ -518,12 +518,14 @@ public class AdminController {
                 .build();
         User savedUser = userRepository.save(sellerUser);
 
+        String locationCoord = geocodeAddress(body.getAddress());
         Store store = Store.builder()
                 .user(savedUser)
                 .businessName(body.getBusinessName())
                 .cuit(body.getCuit())
                 .address(body.getAddress())
                 .description(body.getDescription())
+                .locationCoord(locationCoord)
                 .ratingAvg(0.0)
                 .ratingCount(0)
                 .build();
@@ -574,7 +576,13 @@ public class AdminController {
 
         if (body.getBusinessName() != null) store.setBusinessName(body.getBusinessName());
         if (body.getCuit() != null) store.setCuit(body.getCuit());
-        if (body.getAddress() != null) store.setAddress(body.getAddress());
+        if (body.getAddress() != null) {
+            store.setAddress(body.getAddress());
+            String locationCoord = geocodeAddress(body.getAddress());
+            if (locationCoord != null) {
+                store.setLocationCoord(locationCoord);
+            }
+        }
         if (body.getDescription() != null) store.setDescription(body.getDescription());
         if (body.getHeaderImageUrl() != null) store.setHeaderImage(body.getHeaderImageUrl());
         if (body.getLogoUrl() != null) store.setHeaderImage(body.getLogoUrl());
@@ -665,6 +673,52 @@ public class AdminController {
                         .longitude(longitude)
                         .build())
                 .build();
+    }
+
+    private String geocodeAddress(String address) {
+        if (address == null || address.trim().isEmpty()) {
+            return null;
+        }
+        try {
+            String encodedAddress = java.net.URLEncoder.encode(address.trim(), "UTF-8");
+            String urlStr = "https://nominatim.openstreetmap.org/search?q=" + encodedAddress + "&format=json&limit=1";
+            java.net.URL url = new java.net.URL(urlStr);
+            java.net.HttpURLConnection conn = (java.net.HttpURLConnection) url.openConnection();
+            conn.setRequestMethod("GET");
+            conn.setRequestProperty("User-Agent", "OutletGoBackend/1.0 (contact: support@outletgo.com)");
+            conn.setConnectTimeout(5000);
+            conn.setReadTimeout(5000);
+            
+            if (conn.getResponseCode() == 200) {
+                try (java.io.BufferedReader in = new java.io.BufferedReader(new java.io.InputStreamReader(conn.getInputStream()))) {
+                    StringBuilder response = new StringBuilder();
+                    String line;
+                    while ((line = in.readLine()) != null) {
+                        response.append(line);
+                    }
+                    String json = response.toString();
+                    if (json.contains("\"lat\"") && json.contains("\"lon\"")) {
+                        String latKey = "\"lat\":\"";
+                        int latIdx = json.indexOf(latKey);
+                        if (latIdx != -1) {
+                            int latEnd = json.indexOf("\"", latIdx + latKey.length());
+                            String lat = json.substring(latIdx + latKey.length(), latEnd);
+                            
+                            String lonKey = "\"lon\":\"";
+                            int lonIdx = json.indexOf(lonKey);
+                            if (lonIdx != -1) {
+                                int lonEnd = json.indexOf("\"", lonIdx + lonKey.length());
+                                String lon = json.substring(lonIdx + lonKey.length(), lonEnd);
+                                return lat + "," + lon;
+                            }
+                        }
+                    }
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("Geocoding failed for address " + address + ": " + e.getMessage());
+        }
+        return null;
     }
 
     // ==========================================
