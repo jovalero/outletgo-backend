@@ -532,6 +532,23 @@ public class AdminController {
         return ResponseEntity.ok(mapToSellerAccountResponse(savedStore));
     }
 
+    @GetMapping("/api/admin/sellers/{id}")
+    public ResponseEntity<SellerAccountResponse> getSellerAccountDetail(@PathVariable UUID id) {
+        Store store = storeRepository.findById(id).orElse(null);
+        if (store == null) {
+            User user = userRepository.findById(id).orElse(null);
+            if (user != null) {
+                store = storeRepository.findByUserId(user.getId()).orElse(null);
+            }
+        }
+
+        if (store == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Vendedor no encontrado");
+        }
+
+        return ResponseEntity.ok(mapToSellerAccountResponse(store));
+    }
+
     @PatchMapping("/api/admin/sellers/{id}")
     public ResponseEntity<SellerAccountResponse> updateSellerAccount(
             @PathVariable UUID id,
