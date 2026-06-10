@@ -17,6 +17,7 @@ public class HealthController {
         Map<String, Object> response = new HashMap<>();
         response.put("status", "UP");
         response.put("database", "CONNECTED");
+        response.put("version", "deploy-v2");
         response.put("message", "OutletGo Backend is running successfully on Docker!");
         return ResponseEntity.ok(response);
     }
