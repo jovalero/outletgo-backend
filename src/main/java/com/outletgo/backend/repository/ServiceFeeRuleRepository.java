@@ -11,6 +11,7 @@ import java.util.UUID;
 
 @Repository
 public interface ServiceFeeRuleRepository extends JpaRepository<ServiceFeeRule, UUID> {
+    java.util.List<ServiceFeeRule> findByIsActiveTrue();
 
     @Query("SELECT r FROM ServiceFeeRule r WHERE " +
            "(:isActive IS NULL OR r.isActive = :isActive) AND " +

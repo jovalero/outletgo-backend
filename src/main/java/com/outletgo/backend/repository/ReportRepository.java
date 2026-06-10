@@ -15,6 +15,7 @@ import java.util.UUID;
 public interface ReportRepository extends JpaRepository<Report, UUID> {
 
     List<Report> findByProductId(UUID productId);
+    List<Report> findByReporterId(UUID reporterId);
 
     @Query("SELECT r FROM Report r WHERE r.store.id = :storeId OR (r.product IS NOT NULL AND r.product.store.id = :storeId)")
     List<Report> findByStoreIdOrProductStoreId(@Param("storeId") UUID storeId);

@@ -11,6 +11,7 @@ import java.util.UUID;
 
 @Repository
 public interface PickupPointRepository extends JpaRepository<PickupPoint, UUID> {
+    java.util.List<PickupPoint> findByIsActiveTrue();
 
     @Query("SELECT p FROM PickupPoint p WHERE " +
            "(:isActive IS NULL OR p.isActive = :isActive) AND " +
