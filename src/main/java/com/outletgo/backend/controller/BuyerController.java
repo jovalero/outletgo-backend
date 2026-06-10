@@ -12,6 +12,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
+import org.springframework.transaction.annotation.Transactional;
+import com.outletgo.backend.dto.AuthResponse;
 
 import java.time.LocalDateTime;
 import java.util.*;
@@ -1738,5 +1740,97 @@ public class BuyerController {
         private String body;
         private String imageUrl;
         private String createdAt;
+    }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class CheckoutSummaryRequest {
+        private Double productSubtotal;
+        private Double quotedShippingCost;
+    }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class CreateOrderRequest {
+        private List<CheckoutStorePayload> storeGroups;
+        private CheckoutShippingPayload shipping;
+    }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class CheckoutStorePayload {
+        private UUID storeId;
+        private List<CheckoutItemPayload> items;
+    }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class CheckoutItemPayload {
+        private UUID variationId;
+        private Integer quantity;
+        private Double unitPrice;
+    }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class CheckoutShippingPayload {
+        private Double quotedCost;
+        private String deliveryAddress;
+    }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class SubmitReviewRequestDto {
+        private UUID productId;
+        private UUID storeId;
+        private Integer rating;
+        private String comment;
+    }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class SubmitReportRequestDto {
+        private String reason;
+        private String details;
+    }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class UpdateProfileRequest {
+        private String name;
+        private String avatarUrl;
+    }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class UpdateEmailRequest {
+        private String email;
+        private String currentPassword;
+    }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class ChangePasswordRequest {
+        private String currentPassword;
+        private String newPassword;
+    }
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class CreateOrderResponse {
+        private UUID orderId;
+        private String mpInitPoint;
     }
 }
