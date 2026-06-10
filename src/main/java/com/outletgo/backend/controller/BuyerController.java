@@ -23,6 +23,7 @@ import java.util.stream.Stream;
 @RestController
 @RequestMapping("/api/buyer")
 @CrossOrigin
+@Transactional
 public class BuyerController {
 
     @Autowired
