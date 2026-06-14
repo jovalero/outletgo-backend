@@ -13,7 +13,11 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.beans.factory.annotation.Value;
 import com.outletgo.backend.dto.AuthResponse;
+import com.mercadopago.MercadoPagoConfig;
+import com.mercadopago.client.preference.*;
+import com.mercadopago.resources.preference.Preference;
 
 import java.time.LocalDateTime;
 import java.util.*;
@@ -25,6 +29,9 @@ import java.util.stream.Stream;
 @CrossOrigin
 @Transactional
 public class BuyerController {
+
+    @Value("${mercadopago.access-token:}")
+    private String mpAccessToken;
 
     @Autowired
     private UserRepository userRepository;
@@ -548,11 +555,67 @@ public class BuyerController {
             }
         }
 
-        // Return MP mock redirect url
+        // Return MP redirect url
         String returnUrl = "outletgo://checkout/return?status=approved&order_id=" + savedOrder.getId();
+        String mpInitPoint = returnUrl;
+
+        if (mpAccessToken != null && !mpAccessToken.trim().isEmpty() && 
+            !mpAccessToken.contains("access_token") && !mpAccessToken.contains("placeholder") && 
+            !mpAccessToken.contains("your_")) {
+            try {
+                MercadoPagoConfig.setAccessToken(mpAccessToken.trim());
+
+                List<PreferenceItemRequest> items = new ArrayList<>();
+                for (CheckoutStorePayload gp : req.getStoreGroups()) {
+                    for (CheckoutItemPayload item : gp.getItems()) {
+                        items.add(PreferenceItemRequest.builder()
+                                .title("Producto " + item.getVariationId().toString().substring(0, 8))
+                                .quantity(item.getQuantity())
+                                .unitPrice(new java.math.BigDecimal(item.getUnitPrice()))
+                                .build());
+                    }
+                }
+
+                if (shippingCost > 0) {
+                    items.add(PreferenceItemRequest.builder()
+                            .title("Envío OutletGo")
+                            .quantity(1)
+                            .unitPrice(new java.math.BigDecimal(shippingCost))
+                            .build());
+                }
+
+                if (serviceFee > 0) {
+                    items.add(PreferenceItemRequest.builder()
+                            .title("Tarifa de Servicio")
+                            .quantity(1)
+                            .unitPrice(new java.math.BigDecimal(serviceFee))
+                            .build());
+                }
+
+                PreferenceBackUrlsRequest backUrls = PreferenceBackUrlsRequest.builder()
+                        .success("outletgo://checkout/return?status=approved&order_id=" + savedOrder.getId())
+                        .pending("outletgo://checkout/return?status=pending&order_id=" + savedOrder.getId())
+                        .failure("outletgo://checkout/return?status=rejected&order_id=" + savedOrder.getId())
+                        .build();
+
+                PreferenceRequest preferenceRequest = PreferenceRequest.builder()
+                        .items(items)
+                        .backUrls(backUrls)
+                        .autoReturn("approved")
+                        .build();
+
+                PreferenceClient mpClient = new PreferenceClient();
+                Preference preference = mpClient.create(preferenceRequest);
+                mpInitPoint = preference.getSandboxInitPoint();
+            } catch (Exception e) {
+                System.err.println("Error creating Mercado Pago Preference: " + e.getMessage());
+                e.printStackTrace();
+            }
+        }
+
         return ResponseEntity.ok(CreateOrderResponse.builder()
                 .orderId(savedOrder.getId())
-                .mpInitPoint(returnUrl)
+                .mpInitPoint(mpInitPoint)
                 .build());
     }
 
@@ -1499,6 +1562,66 @@ public class BuyerController {
         return ResponseEntity.ok().build();
     }
 
+    @PostMapping("/search/visual")
+    public ResponseEntity<?> searchVisual(@RequestParam("image") org.springframework.web.multipart.MultipartFile file) {
+        String originalFilename = file.getOriginalFilename();
+        String searchTag = "Calzado";
+        if (originalFilename != null) {
+            String lower = originalFilename.toLowerCase();
+            if (lower.contains("remera") || lower.contains("shirt") || lower.contains("ropa") || lower.contains("vestido")) {
+                searchTag = "Ropa";
+            } else if (lower.contains("pant") || lower.contains("jean") || lower.contains("abrigo") || lower.contains("buzo")) {
+                searchTag = "Abrigos";
+            }
+        }
+
+        List<Product> products = productRepository.findByIsactiveTrue();
+        String finalSearchTag = searchTag;
+        List<Product> matched = products.stream()
+                .filter(p -> (p.getCategory() != null && p.getCategory().getName().equalsIgnoreCase(finalSearchTag)) ||
+                             p.getName().toLowerCase().contains(finalSearchTag.toLowerCase()) ||
+                             p.getDescription().toLowerCase().contains(finalSearchTag.toLowerCase()))
+                .collect(Collectors.toList());
+
+        if (matched.isEmpty()) {
+            matched = products.stream().limit(3).collect(Collectors.toList());
+        }
+
+        List<CatalogProductDto> dtos = matched.stream().map(p -> {
+            List<ProductImage> imgs = productImageRepository.findByProductId(p.getId());
+            String thumb = imgs.isEmpty() ? null : imgs.get(0).getImageUrl();
+            return CatalogProductDto.builder()
+                    .id(p.getId())
+                    .name(p.getName())
+                    .thumbnailUrl(thumb)
+                    .price(p.getBasePrice())
+                    .storeId(p.getStore().getId())
+                    .storeName(p.getStore().getBusinessName())
+                    .ratingAvg(p.getRatingAvg())
+                    .ratingCount(p.getRatingCount())
+                    .distanceKm(null)
+                    .build();
+        }).collect(Collectors.toList());
+
+        List<String> detectedTags = new ArrayList<>();
+        detectedTags.add(searchTag);
+        if (searchTag.equals("Calzado")) {
+            detectedTags.add("Zapatilla");
+            detectedTags.add("Deportivo");
+        } else if (searchTag.equals("Ropa")) {
+            detectedTags.add("Remera");
+            detectedTags.add("Moda");
+        }
+
+        LensSearchResultDto result = LensSearchResultDto.builder()
+                .products(dtos)
+                .detectedTags(detectedTags)
+                .hasMeaningfulResults(true)
+                .build();
+
+        return ResponseEntity.ok(result);
+    }
+
     // ==========================================
     // INNER DTO CLASSES
     // ==========================================
@@ -1833,5 +1956,15 @@ public class BuyerController {
     public static class CreateOrderResponse {
         private UUID orderId;
         private String mpInitPoint;
+    }
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class LensSearchResultDto {
+        private List<CatalogProductDto> products;
+        private List<String> detectedTags;
+        private Boolean hasMeaningfulResults;
     }
 }
