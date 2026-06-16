@@ -1610,10 +1610,6 @@ public class BuyerController {
                              p.getDescription().toLowerCase().contains(finalSearchTag.toLowerCase()))
                 .collect(Collectors.toList());
 
-        if (matched.isEmpty()) {
-            matched = products.stream().limit(3).collect(Collectors.toList());
-        }
-
         List<CatalogProductDto> dtos = matched.stream().map(p -> {
             List<ProductImage> imgs = productImageRepository.findByProductId(p.getId());
             String thumb = imgs.isEmpty() ? null : imgs.get(0).getImageUrl();
@@ -1649,7 +1645,7 @@ public class BuyerController {
         LensSearchResultDto result = LensSearchResultDto.builder()
                 .products(dtos)
                 .detectedTags(detectedTags)
-                .hasMeaningfulResults(true)
+                .hasMeaningfulResults(!dtos.isEmpty())
                 .build();
 
         return ResponseEntity.ok(result);
