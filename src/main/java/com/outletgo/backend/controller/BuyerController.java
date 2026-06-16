@@ -1565,13 +1565,40 @@ public class BuyerController {
     @PostMapping("/search/visual")
     public ResponseEntity<?> searchVisual(@RequestParam("image") org.springframework.web.multipart.MultipartFile file) {
         String originalFilename = file.getOriginalFilename();
-        String searchTag = "Calzado";
+        String searchTag = null;
+
+        // 1. Check for filename keywords
         if (originalFilename != null) {
             String lower = originalFilename.toLowerCase();
             if (lower.contains("remera") || lower.contains("shirt") || lower.contains("ropa") || lower.contains("vestido")) {
                 searchTag = "Ropa";
-            } else if (lower.contains("pant") || lower.contains("jean") || lower.contains("abrigo") || lower.contains("buzo")) {
+            } else if (lower.contains("pant") || lower.contains("jean") || lower.contains("abrigo") || lower.contains("buzo") || lower.contains("campera")) {
                 searchTag = "Abrigos";
+            } else if (lower.contains("zapa") || lower.contains("tenis") || lower.contains("calzado") || lower.contains("shoes")) {
+                searchTag = "Calzado";
+            } else if (lower.contains("gorra") || lower.contains("riñonera") || lower.contains("accesorio") || lower.contains("cap")) {
+                searchTag = "Accesorios";
+            }
+        }
+
+        // 2. Fallback: classify based on file size modulo 4
+        if (searchTag == null) {
+            long size = file.getSize();
+            int bucket = (int) (size % 4);
+            switch (bucket) {
+                case 0:
+                    searchTag = "Calzado";
+                    break;
+                case 1:
+                    searchTag = "Ropa";
+                    break;
+                case 2:
+                    searchTag = "Abrigos";
+                    break;
+                case 3:
+                default:
+                    searchTag = "Accesorios";
+                    break;
             }
         }
 
@@ -1611,6 +1638,12 @@ public class BuyerController {
         } else if (searchTag.equals("Ropa")) {
             detectedTags.add("Remera");
             detectedTags.add("Moda");
+        } else if (searchTag.equals("Abrigos")) {
+            detectedTags.add("Buzo");
+            detectedTags.add("Campera");
+        } else if (searchTag.equals("Accesorios")) {
+            detectedTags.add("Gorra");
+            detectedTags.add("Riñonera");
         }
 
         LensSearchResultDto result = LensSearchResultDto.builder()
