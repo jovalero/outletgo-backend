@@ -1564,51 +1564,104 @@ public class BuyerController {
 
     @PostMapping("/search/visual")
     public ResponseEntity<?> searchVisual(@RequestParam("image") org.springframework.web.multipart.MultipartFile file) {
-        String originalFilename = file.getOriginalFilename();
-        String searchTag = null;
-
-        // 1. Check for filename keywords
-        if (originalFilename != null) {
-            String lower = originalFilename.toLowerCase();
-            if (lower.contains("remera") || lower.contains("shirt") || lower.contains("ropa") || lower.contains("vestido")) {
-                searchTag = "Ropa";
-            } else if (lower.contains("pant") || lower.contains("jean") || lower.contains("abrigo") || lower.contains("buzo") || lower.contains("campera")) {
-                searchTag = "Abrigos";
-            } else if (lower.contains("zapa") || lower.contains("tenis") || lower.contains("calzado") || lower.contains("shoes")) {
-                searchTag = "Calzado";
-            } else if (lower.contains("gorra") || lower.contains("riñonera") || lower.contains("accesorio") || lower.contains("cap")) {
-                searchTag = "Accesorios";
-            }
+        String visionApiKey = System.getenv("GOOGLE_VISION_API_KEY");
+        byte[] imageBytes;
+        try {
+            imageBytes = file.getBytes();
+        } catch (java.io.IOException e) {
+            return ResponseEntity.status(500).body("Error reading uploaded image file: " + e.getMessage());
         }
 
-        // 2. Fallback: classify based on file size modulo 4
-        if (searchTag == null) {
-            long size = file.getSize();
-            int bucket = (int) (size % 4);
-            switch (bucket) {
-                case 0:
-                    searchTag = "Calzado";
-                    break;
-                case 1:
-                    searchTag = "Ropa";
-                    break;
-                case 2:
-                    searchTag = "Abrigos";
-                    break;
-                case 3:
-                default:
-                    searchTag = "Accesorios";
-                    break;
-            }
-        }
+        List<Product> matched = new ArrayList<>();
+        List<String> detectedTags = new ArrayList<>();
 
-        List<Product> products = productRepository.findByIsactiveTrue();
-        String finalSearchTag = searchTag;
-        List<Product> matched = products.stream()
-                .filter(p -> (p.getCategory() != null && p.getCategory().getName().equalsIgnoreCase(finalSearchTag)) ||
-                             p.getName().toLowerCase().contains(finalSearchTag.toLowerCase()) ||
-                             p.getDescription().toLowerCase().contains(finalSearchTag.toLowerCase()))
+        if (visionApiKey != null && !visionApiKey.trim().isEmpty()) {
+            List<String> visionTags = detectTagsWithGoogleVision(imageBytes, visionApiKey);
+            detectedTags.addAll(visionTags);
+            
+            // Map Vision tags to categories and also find products containing these tags in name/description
+            java.util.Set<String> matchedCategories = new java.util.HashSet<>();
+            for (String tag : visionTags) {
+                String t = tag.toLowerCase();
+                if (t.contains("calzado") || t.contains("shoes") || t.contains("sneakers") || t.contains("zapatilla") || 
+                    t.contains("tenis") || t.contains("footwear") || t.contains("boot") || t.contains("sandal") || t.contains("athletic shoe")) {
+                    matchedCategories.add("Calzado");
+                }
+                if (t.contains("ropa") || t.contains("shirt") || t.contains("t-shirt") || t.contains("vestido") || 
+                    t.contains("clothing") || t.contains("dress") || t.contains("skirt") || t.contains("blouse") || t.contains("top")) {
+                    matchedCategories.add("Ropa");
+                }
+                if (t.contains("abrigo") || t.contains("coat") || t.contains("jacket") || t.contains("sweater") || 
+                    t.contains("hoodie") || t.contains("buzo") || t.contains("campera") || t.contains("outerwear") || t.contains("cardigan")) {
+                    matchedCategories.add("Abrigos");
+                }
+                if (t.contains("accesorio") || t.contains("accessory") || t.contains("hat") || t.contains("cap") || 
+                    t.contains("gorra") || t.contains("bag") || t.contains("wallet") || t.contains("belt") || t.contains("watch") || t.contains("backpack")) {
+                    matchedCategories.add("Accesorios");
+                }
+            }
+            
+            List<Product> products = productRepository.findByIsactiveTrue();
+            matched = products.stream()
+                .filter(p -> {
+                    // Category match
+                    boolean categoryMatch = p.getCategory() != null && matchedCategories.contains(p.getCategory().getName());
+                    if (categoryMatch) return true;
+                    
+                    // Direct name/description keyword match
+                    String pName = p.getName().toLowerCase();
+                    String pDesc = p.getDescription() != null ? p.getDescription().toLowerCase() : "";
+                    for (String tag : visionTags) {
+                        String t = tag.toLowerCase();
+                        if (pName.contains(t) || pDesc.contains(t)) {
+                            return true;
+                        }
+                    }
+                    return false;
+                })
                 .collect(Collectors.toList());
+        } else {
+            // Simulated search by filename keywords
+            String originalFilename = file.getOriginalFilename();
+            String searchTag = null;
+            if (originalFilename != null) {
+                String lower = originalFilename.toLowerCase();
+                if (lower.contains("remera") || lower.contains("shirt") || lower.contains("ropa") || lower.contains("vestido")) {
+                    searchTag = "Ropa";
+                } else if (lower.contains("pant") || lower.contains("jean") || lower.contains("abrigo") || lower.contains("buzo") || lower.contains("campera")) {
+                    searchTag = "Abrigos";
+                } else if (lower.contains("zapa") || lower.contains("tenis") || lower.contains("calzado") || lower.contains("shoes")) {
+                    searchTag = "Calzado";
+                } else if (lower.contains("gorra") || lower.contains("riñonera") || lower.contains("accesorio") || lower.contains("cap")) {
+                    searchTag = "Accesorios";
+                }
+            }
+            
+            if (searchTag != null) {
+                detectedTags.add(searchTag);
+                if (searchTag.equals("Calzado")) {
+                    detectedTags.add("Zapatilla");
+                    detectedTags.add("Deportivo");
+                } else if (searchTag.equals("Ropa")) {
+                    detectedTags.add("Remera");
+                    detectedTags.add("Moda");
+                } else if (searchTag.equals("Abrigos")) {
+                    detectedTags.add("Buzo");
+                    detectedTags.add("Campera");
+                } else if (searchTag.equals("Accesorios")) {
+                    detectedTags.add("Gorra");
+                    detectedTags.add("Riñonera");
+                }
+                
+                String finalSearchTag = searchTag;
+                List<Product> products = productRepository.findByIsactiveTrue();
+                matched = products.stream()
+                        .filter(p -> (p.getCategory() != null && p.getCategory().getName().equalsIgnoreCase(finalSearchTag)) ||
+                                     p.getName().toLowerCase().contains(finalSearchTag.toLowerCase()) ||
+                                     (p.getDescription() != null && p.getDescription().toLowerCase().contains(finalSearchTag.toLowerCase())))
+                        .collect(Collectors.toList());
+            }
+        }
 
         List<CatalogProductDto> dtos = matched.stream().map(p -> {
             List<ProductImage> imgs = productImageRepository.findByProductId(p.getId());
@@ -1626,22 +1679,6 @@ public class BuyerController {
                     .build();
         }).collect(Collectors.toList());
 
-        List<String> detectedTags = new ArrayList<>();
-        detectedTags.add(searchTag);
-        if (searchTag.equals("Calzado")) {
-            detectedTags.add("Zapatilla");
-            detectedTags.add("Deportivo");
-        } else if (searchTag.equals("Ropa")) {
-            detectedTags.add("Remera");
-            detectedTags.add("Moda");
-        } else if (searchTag.equals("Abrigos")) {
-            detectedTags.add("Buzo");
-            detectedTags.add("Campera");
-        } else if (searchTag.equals("Accesorios")) {
-            detectedTags.add("Gorra");
-            detectedTags.add("Riñonera");
-        }
-
         LensSearchResultDto result = LensSearchResultDto.builder()
                 .products(dtos)
                 .detectedTags(detectedTags)
@@ -1649,6 +1686,69 @@ public class BuyerController {
                 .build();
 
         return ResponseEntity.ok(result);
+    }
+
+    private List<String> detectTagsWithGoogleVision(byte[] imageBytes, String apiKey) {
+        List<String> tags = new ArrayList<>();
+        try {
+            String base64Image = java.util.Base64.getEncoder().encodeToString(imageBytes);
+            
+            // Build JSON request payload
+            Map<String, Object> imageMap = Map.of("content", base64Image);
+            Map<String, Object> featureLabel = Map.of("type", "LABEL_DETECTION", "maxResults", 15);
+            Map<String, Object> featureObject = Map.of("type", "OBJECT_LOCALIZATION", "maxResults", 15);
+            
+            Map<String, Object> request = Map.of(
+                "image", imageMap,
+                "features", List.of(featureLabel, featureObject)
+            );
+            Map<String, Object> payload = Map.of("requests", List.of(request));
+            
+            // Send request using RestTemplate
+            org.springframework.web.client.RestTemplate restTemplate = new org.springframework.web.client.RestTemplate();
+            String url = "https://vision.googleapis.com/v1/images:annotate?key=" + apiKey;
+            
+            org.springframework.http.HttpHeaders headers = new org.springframework.http.HttpHeaders();
+            headers.setContentType(org.springframework.http.MediaType.APPLICATION_JSON);
+            
+            org.springframework.http.HttpEntity<Map<String, Object>> entity = new org.springframework.http.HttpEntity<>(payload, headers);
+            org.springframework.http.ResponseEntity<String> response = restTemplate.postForEntity(url, entity, String.class);
+            
+            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
+                com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+                com.fasterxml.jackson.databind.JsonNode root = mapper.readTree(response.getBody());
+                com.fasterxml.jackson.databind.JsonNode responses = root.path("responses");
+                if (responses.isArray() && responses.size() > 0) {
+                    com.fasterxml.jackson.databind.JsonNode firstResponse = responses.get(0);
+                    
+                    // 1. Extract Label Annotations
+                    com.fasterxml.jackson.databind.JsonNode labels = firstResponse.path("labelAnnotations");
+                    if (labels.isArray()) {
+                        for (com.fasterxml.jackson.databind.JsonNode label : labels) {
+                            String desc = label.path("description").asText();
+                            if (desc != null && !desc.isEmpty()) {
+                                tags.add(desc.toLowerCase());
+                            }
+                        }
+                    }
+                    
+                    // 2. Extract Object Localizations
+                    com.fasterxml.jackson.databind.JsonNode objects = firstResponse.path("localizedObjectAnnotations");
+                    if (objects.isArray()) {
+                        for (com.fasterxml.jackson.databind.JsonNode obj : objects) {
+                            String name = obj.path("name").asText();
+                            if (name != null && !name.isEmpty()) {
+                                tags.add(name.toLowerCase());
+                            }
+                        }
+                    }
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("Error calling Google Cloud Vision API: " + e.getMessage());
+            e.printStackTrace();
+        }
+        return tags;
     }
 
     // ==========================================
