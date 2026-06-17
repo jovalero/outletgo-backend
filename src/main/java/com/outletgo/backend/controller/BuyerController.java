@@ -501,7 +501,7 @@ public class BuyerController {
         Order order = Order.builder()
                 .client(user)
                 .store(mainStore)
-                .status(Order.OrderStatus.PAID) // Direct paid status for sandbox testing
+                .status(Order.OrderStatus.PENDING) // Start as PENDING before payment is completed
                 .productSubtotal(productSubtotal)
                 .shippingCost(shippingCost)
                 .serviceFee(serviceFee)
@@ -525,7 +525,7 @@ public class BuyerController {
             OrderStore slice = OrderStore.builder()
                     .order(savedOrder)
                     .store(store)
-                    .status(Order.OrderStatus.PAID)
+                    .status(Order.OrderStatus.PENDING)
                     .subtotalAmount(groupSubtotal)
                     .commissionRate(0.10)
                     .commissionAmount(groupSubtotal * 0.10)
@@ -617,6 +617,66 @@ public class BuyerController {
                 .orderId(savedOrder.getId())
                 .mpInitPoint(mpInitPoint)
                 .build());
+    }
+
+    @PostMapping("/orders/{orderId}/payment-status")
+    @Transactional
+    public ResponseEntity<?> updatePaymentStatus(
+            @RequestHeader("Authorization") String authHeader,
+            @PathVariable UUID orderId,
+            @RequestParam("status") String status) {
+
+        User user = getAuthenticatedUser(authHeader);
+        if (user == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "No autorizado");
+        }
+
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Pedido no encontrado"));
+
+        if (!order.getClient().getId().equals(user.getId())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "No tienes permiso para este pedido");
+        }
+
+        if ("approved".equalsIgnoreCase(status)) {
+            order.setStatus(Order.OrderStatus.PAID);
+            orderRepository.save(order);
+            
+            List<OrderStore> slices = orderStoreRepository.findByOrderId(orderId);
+            for (OrderStore slice : slices) {
+                slice.setStatus(Order.OrderStatus.PAID);
+                orderStoreRepository.save(slice);
+            }
+        } else if ("rejected".equalsIgnoreCase(status) || "failure".equalsIgnoreCase(status) || "cancel".equalsIgnoreCase(status) || "cancelled".equalsIgnoreCase(status)) {
+            if (order.getStatus() != Order.OrderStatus.CANCELLED && order.getStatus() != Order.OrderStatus.CANCELED) {
+                order.setStatus(Order.OrderStatus.CANCELLED);
+                orderRepository.save(order);
+                
+                List<OrderStore> slices = orderStoreRepository.findByOrderId(orderId);
+                for (OrderStore slice : slices) {
+                    slice.setStatus(Order.OrderStatus.CANCELLED);
+                    orderStoreRepository.save(slice);
+                    
+                    List<OrderItem> items = orderItemRepository.findByOrderStoreId(slice.getId());
+                    for (OrderItem item : items) {
+                        ProductVariation variation = item.getVariation();
+                        variation.setStock(variation.getStock() + item.getQuantity());
+                        productVariationRepository.save(variation);
+                    }
+                }
+            }
+        } else {
+            order.setStatus(Order.OrderStatus.PENDING);
+            orderRepository.save(order);
+            
+            List<OrderStore> slices = orderStoreRepository.findByOrderId(orderId);
+            for (OrderStore slice : slices) {
+                slice.setStatus(Order.OrderStatus.PENDING);
+                orderStoreRepository.save(slice);
+            }
+        }
+
+        return ResponseEntity.ok().build();
     }
 
     @GetMapping("/orders")
