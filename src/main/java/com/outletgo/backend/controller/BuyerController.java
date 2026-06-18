@@ -138,7 +138,18 @@ public class BuyerController {
             @RequestParam(required = false) Double longitude,
             @RequestParam(required = false) Double radiusKm,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size) {
+            @RequestParam(defaultValue = "10") String size) {
+
+        int pageSize = 10;
+        String finalSizeFilter = sizeFilter;
+        if (size != null) {
+            try {
+                pageSize = Integer.parseInt(size);
+            } catch (NumberFormatException e) {
+                // Fallback: If 'size' is not a number (e.g. "XS"), it's the clothing size filter from the app
+                finalSizeFilter = size;
+            }
+        }
 
         List<Product> list = productRepository.findByIsactiveTrue();
         Stream<Product> stream = list.stream();
@@ -159,8 +170,8 @@ public class BuyerController {
         if (maxPrice != null) {
             stream = stream.filter(p -> p.getBasePrice() <= maxPrice);
         }
-        if (sizeFilter != null && !sizeFilter.trim().isEmpty()) {
-            String sizeLower = sizeFilter.trim().toLowerCase();
+        if (finalSizeFilter != null && !finalSizeFilter.trim().isEmpty()) {
+            String sizeLower = finalSizeFilter.trim().toLowerCase();
             stream = stream.filter(p -> {
                 List<ProductVariation> variations = productVariationRepository.findByProductId(p.getId());
                 return variations.stream().anyMatch(v -> v.getSize().toLowerCase().equals(sizeLower) && v.getStock() > 0);
@@ -204,11 +215,11 @@ public class BuyerController {
                     .collect(Collectors.toList());
         }
 
-        int start = Math.min(page * size, dtos.size());
-        int end = Math.min((page + 1) * size, dtos.size());
+        int start = Math.min(page * pageSize, dtos.size());
+        int end = Math.min((page + 1) * pageSize, dtos.size());
         List<CatalogProductDto> paginated = dtos.subList(start, end);
 
-        Pageable pageable = PageRequest.of(page, size);
+        Pageable pageable = PageRequest.of(page, pageSize);
         return ResponseEntity.ok(new PageImpl<>(paginated, pageable, dtos.size()));
     }
 
@@ -362,7 +373,7 @@ public class BuyerController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
 
-        return getCatalogProducts(categoryId, storeId, name, minPrice, maxPrice, null, null, null, null, page, size);
+        return getCatalogProducts(categoryId, storeId, name, minPrice, maxPrice, null, null, null, null, page, String.valueOf(size));
     }
 
     @GetMapping("/stores/nearby")
