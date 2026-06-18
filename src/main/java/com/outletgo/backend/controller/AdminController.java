@@ -647,6 +647,35 @@ public class AdminController {
         return ResponseEntity.ok(mapToSellerAccountResponse(store));
     }
 
+    @PostMapping("/api/admin/sellers/{id}/reset-password")
+    public ResponseEntity<Void> resetSellerPassword(
+            @PathVariable UUID id,
+            @RequestBody Map<String, String> body) {
+
+        Store store = storeRepository.findById(id).orElse(null);
+        if (store == null) {
+            User user = userRepository.findById(id).orElse(null);
+            if (user != null) {
+                store = storeRepository.findByUserId(user.getId()).orElse(null);
+            }
+        }
+
+        if (store == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Vendedor no encontrado");
+        }
+
+        User user = store.getUser();
+        String newPassword = body.get("password");
+        if (newPassword == null || newPassword.length() < 8) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "La contraseña debe tener al menos 8 caracteres");
+        }
+
+        user.setPassword(passwordEncoder.encode(newPassword));
+        userRepository.save(user);
+
+        return ResponseEntity.ok().build();
+    }
+
     private SellerAccountResponse mapToSellerAccountResponse(Store s) {
         User u = s.getUser();
         Double latitude = null;
