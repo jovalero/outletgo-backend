@@ -159,6 +159,13 @@ public class BuyerController {
         if (maxPrice != null) {
             stream = stream.filter(p -> p.getBasePrice() <= maxPrice);
         }
+        if (sizeFilter != null && !sizeFilter.trim().isEmpty()) {
+            String sizeLower = sizeFilter.trim().toLowerCase();
+            stream = stream.filter(p -> {
+                List<ProductVariation> variations = productVariationRepository.findByProductId(p.getId());
+                return variations.stream().anyMatch(v -> v.getSize().toLowerCase().equals(sizeLower) && v.getStock() > 0);
+            });
+        }
 
         List<Product> filtered = stream.collect(Collectors.toList());
 
