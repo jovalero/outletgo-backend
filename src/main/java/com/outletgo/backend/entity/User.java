@@ -38,6 +38,17 @@ public class User {
     @Column(name = "isactive", nullable = false)
     private Boolean isactive = true;
 
+    @Column(name = "selected_logistics_type", length = 20)
+    private String selectedLogisticsType; // PICKUP | DELIVERY
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "selected_address_id")
+    private UserAddress selectedAddress;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "selected_pickup_point_id")
+    private PickupPoint selectedPickupPoint;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
 

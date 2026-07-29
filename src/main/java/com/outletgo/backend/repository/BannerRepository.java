@@ -8,7 +8,12 @@ import org.springframework.stereotype.Repository;
 
 import java.util.UUID;
 
+import java.util.List;
+import java.time.LocalDateTime;
+
 @Repository
 public interface BannerRepository extends JpaRepository<Banner, UUID> {
     Page<Banner> findAllByOrderByCreatedAtDesc(Pageable pageable);
+    List<Banner> findByStatusAndStartDateLessThanEqualAndEndDateGreaterThanEqualOrderByCreatedAtDesc(
+            String status, LocalDateTime nowStart, LocalDateTime nowEnd);
 }

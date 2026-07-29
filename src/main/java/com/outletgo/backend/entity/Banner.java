@@ -5,6 +5,9 @@ import lombok.*;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
+import java.util.Set;
+import java.util.HashSet;
+
 @Entity
 @Table(name = "banners")
 @Getter
@@ -41,6 +44,24 @@ public class Banner {
 
     @Column(name = "end_date")
     private LocalDateTime endDate;
+
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+        name = "banner_stores",
+        joinColumns = @JoinColumn(name = "banner_id"),
+        inverseJoinColumns = @JoinColumn(name = "store_id")
+    )
+    @Builder.Default
+    private Set<Store> stores = new HashSet<>();
+
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+        name = "banner_products",
+        joinColumns = @JoinColumn(name = "banner_id"),
+        inverseJoinColumns = @JoinColumn(name = "product_id")
+    )
+    @Builder.Default
+    private Set<Product> products = new HashSet<>();
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;

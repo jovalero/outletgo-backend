@@ -15,6 +15,8 @@ import org.springframework.web.server.ResponseStatusException;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.beans.factory.annotation.Value;
 import com.outletgo.backend.dto.AuthResponse;
+import com.outletgo.backend.service.UserAddressService;
+import com.outletgo.backend.service.BannerService;
 import com.mercadopago.MercadoPagoConfig;
 import com.mercadopago.client.preference.*;
 import com.mercadopago.resources.preference.Preference;
@@ -89,6 +91,12 @@ public class BuyerController {
 
     @Autowired
     private JwtUtil jwtUtil;
+
+    @Autowired
+    private UserAddressService userAddressService;
+
+    @Autowired
+    private BannerService bannerService;
 
     // Helper: Authenticated User from JWT
     private User getAuthenticatedUser(String authorizationHeader) {
@@ -370,10 +378,11 @@ public class BuyerController {
             @RequestParam(required = false) String name,
             @RequestParam(required = false) Double minPrice,
             @RequestParam(required = false) Double maxPrice,
+            @RequestParam(required = false) String sizeFilter,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
 
-        return getCatalogProducts(categoryId, storeId, name, minPrice, maxPrice, null, null, null, null, page, String.valueOf(size));
+        return getCatalogProducts(categoryId, storeId, name, minPrice, maxPrice, sizeFilter, null, null, null, page, String.valueOf(size));
     }
 
     @GetMapping("/stores/nearby")
@@ -2173,5 +2182,145 @@ public class BuyerController {
         private List<CatalogProductDto> products;
         private List<String> detectedTags;
         private Boolean hasMeaningfulResults;
+    }
+
+    // ==========================================
+    // 8. ADDRESSES & LOGISTICS
+    // ==========================================
+
+    @GetMapping("/addresses")
+    public ResponseEntity<List<UserAddress>> getAddresses(
+            @RequestHeader("Authorization") String authHeader) {
+        User user = getAuthenticatedUser(authHeader);
+        if (user == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "No autorizado");
+        }
+        return ResponseEntity.ok(userAddressService.getAddressesByUserId(user.getId()));
+    }
+
+    @PostMapping("/addresses")
+    public ResponseEntity<UserAddress> createAddress(
+            @RequestHeader("Authorization") String authHeader,
+            @RequestBody UserAddress address) {
+        User user = getAuthenticatedUser(authHeader);
+        if (user == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "No autorizado");
+        }
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(userAddressService.createAddress(user.getId(), address));
+    }
+
+    @PutMapping("/addresses/{id}")
+    public ResponseEntity<UserAddress> updateAddress(
+            @RequestHeader("Authorization") String authHeader,
+            @PathVariable Long id,
+            @RequestBody UserAddress address) {
+        User user = getAuthenticatedUser(authHeader);
+        if (user == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "No autorizado");
+        }
+        return ResponseEntity.ok(userAddressService.updateAddress(user.getId(), id, address));
+    }
+
+    @DeleteMapping("/addresses/{id}")
+    public ResponseEntity<Void> deleteAddress(
+            @RequestHeader("Authorization") String authHeader,
+            @PathVariable Long id) {
+        User user = getAuthenticatedUser(authHeader);
+        if (user == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "No autorizado");
+        }
+        userAddressService.deleteAddress(user.getId(), id);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PutMapping("/me/logistics-preference")
+    public ResponseEntity<Void> updateLogisticsPreference(
+            @RequestHeader("Authorization") String authHeader,
+            @RequestBody LogisticsPreferenceRequest body) {
+        User user = getAuthenticatedUser(authHeader);
+        if (user == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "No autorizado");
+        }
+        userAddressService.updateLogisticsPreference(user.getId(), body.getType(), body.getReferenceId());
+        return ResponseEntity.ok().build();
+    }
+
+    // ==========================================
+    // 9. NEW HOME ENDPOINTS
+    // ==========================================
+
+    @GetMapping("/catalog/products/new-arrivals")
+    public ResponseEntity<List<CatalogProductDto>> getNewArrivals(
+            @RequestParam(required = false, defaultValue = "10") int limit) {
+        Pageable pageable = PageRequest.of(0, limit, Sort.by("createdAt").descending());
+        Page<Product> products = productRepository.findAll(pageable);
+        List<CatalogProductDto> list = products.getContent().stream()
+                .filter(p -> Boolean.TRUE.equals(p.getIsactive()))
+                .map(p -> {
+                    String thumb = null;
+                    List<ProductImage> imgs = productImageRepository.findByProductId(p.getId());
+                    if (!imgs.isEmpty()) {
+                        thumb = imgs.get(0).getImageUrl();
+                    }
+                    return CatalogProductDto.builder()
+                            .id(p.getId())
+                            .name(p.getName())
+                            .thumbnailUrl(thumb)
+                            .price(p.getBasePrice())
+                            .storeId(p.getStore().getId())
+                            .storeName(p.getStore().getBusinessName())
+                            .ratingAvg(p.getRatingAvg())
+                            .ratingCount(p.getRatingCount())
+                            .distanceKm(null)
+                            .build();
+                })
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(list);
+    }
+
+    @GetMapping("/stores/top-rated")
+    public ResponseEntity<List<TopRatedStoreDto>> getTopRatedStores(
+            @RequestParam(required = false, defaultValue = "10") int limit) {
+        List<Store> stores = storeRepository.findAll();
+        List<TopRatedStoreDto> list = stores.stream()
+                .filter(s -> s.getUser() != null && Boolean.TRUE.equals(s.getUser().getIsactive()))
+                .sorted((a, b) -> {
+                    Double ratingA = a.getRatingAvg() != null ? a.getRatingAvg() : 0.0;
+                    Double ratingB = b.getRatingAvg() != null ? b.getRatingAvg() : 0.0;
+                    return Double.compare(ratingB, ratingA); // Descending
+                })
+                .limit(limit)
+                .map(s -> TopRatedStoreDto.builder()
+                        .id(s.getId())
+                        .name(s.getBusinessName())
+                        .ratingAvg(s.getRatingAvg())
+                        .ratingCount(s.getRatingCount())
+                        .imageUrl(s.getHeaderImage())
+                        .address(s.getAddress())
+                        .build())
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(list);
+    }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class LogisticsPreferenceRequest {
+        private String type;
+        private String referenceId;
+    }
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class TopRatedStoreDto {
+        private UUID id;
+        private String name;
+        private Double ratingAvg;
+        private Integer ratingCount;
+        private String imageUrl;
+        private String address;
     }
 }

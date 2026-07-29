@@ -9,6 +9,9 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
+import java.time.LocalDateTime;
+import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -28,5 +31,15 @@ public class BannerService {
             banner.setId(UUID.randomUUID());
         }
         return bannerRepository.save(banner);
+    }
+
+    public List<Banner> getActiveBanners() {
+        LocalDateTime now = LocalDateTime.now();
+        return bannerRepository.findByStatusAndStartDateLessThanEqualAndEndDateGreaterThanEqualOrderByCreatedAtDesc(
+                "ACTIVE", now, now);
+    }
+
+    public Optional<Banner> getBannerById(UUID id) {
+        return bannerRepository.findById(id);
     }
 }
