@@ -12,7 +12,7 @@ import java.util.Map;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/admin/blogs")
+@RequestMapping({"/api/admin/blogs", "/admin/blogs"})
 @RequiredArgsConstructor
 @CrossOrigin(origins = "*")
 public class AdminBlogController {
