@@ -42,8 +42,37 @@ public class BlogArticle {
     @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "blog_article_paragraphs", joinColumns = @JoinColumn(name = "article_id"))
     @Column(name = "paragraph", columnDefinition = "text")
+    @com.fasterxml.jackson.annotation.JsonFormat(with = com.fasterxml.jackson.annotation.JsonFormat.Feature.ACCEPT_SINGLE_VALUE_AS_ARRAY)
     @Builder.Default
     private List<String> content = new ArrayList<>();
+
+    @com.fasterxml.jackson.annotation.JsonProperty("content")
+    public void setContent(Object rawContent) {
+        if (rawContent == null) {
+            this.content = new ArrayList<>();
+        } else if (rawContent instanceof List<?>) {
+            List<String> list = new ArrayList<>();
+            for (Object item : (List<?>) rawContent) {
+                if (item != null) {
+                    list.add(item.toString());
+                }
+            }
+            this.content = list;
+        } else if (rawContent instanceof String) {
+            String str = ((String) rawContent).trim();
+            if (str.isEmpty()) {
+                this.content = new ArrayList<>();
+            } else {
+                List<String> list = new ArrayList<>();
+                for (String part : str.split("\n")) {
+                    if (!part.trim().isEmpty()) {
+                        list.add(part.trim());
+                    }
+                }
+                this.content = list;
+            }
+        }
+    }
 
     @Column(length = 20)
     @Builder.Default
