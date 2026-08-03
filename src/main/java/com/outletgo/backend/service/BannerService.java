@@ -28,9 +28,7 @@ public class BannerService {
 
     @Transactional
     public Banner createBanner(Banner banner) {
-        if (banner.getId() == null) {
-            banner.setId(UUID.randomUUID());
-        }
+        banner.setId(null);
         return bannerRepository.save(banner);
     }
 
