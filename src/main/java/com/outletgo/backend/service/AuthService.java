@@ -33,13 +33,14 @@ public class AuthService {
 
     @Transactional
     public AuthResponse register(RegisterRequest request) {
-        if (userRepository.existsByEmail(request.getEmail())) {
+        String email = request.getEmail() != null ? request.getEmail().trim() : "";
+        if (userRepository.existsByEmailIgnoreCase(email)) {
             throw new BadRequestException("El email ya está registrado");
         }
 
         // Create and save User
         User user = User.builder()
-                .email(request.getEmail())
+                .email(email)
                 .password(passwordEncoder.encode(request.getPassword()))
                 .role(request.getRole())
                 .isactive(true)
@@ -51,7 +52,7 @@ public class AuthService {
         if (request.getRole() == Role.OUTLET_OWNER) {
             Store store = Store.builder()
                     .user(savedUser)
-                    .businessName("Mi Outlet (" + request.getEmail() + ")")
+                    .businessName("Mi Outlet (" + email + ")")
                     .cuit("00-00000000-0")
                     .address("Dirección a definir")
                     .description("Descripción de mi tienda outlet")
@@ -89,7 +90,8 @@ public class AuthService {
 
     @Transactional(readOnly = true)
     public AuthResponse login(LoginRequest request) {
-        User user = userRepository.findByEmail(request.getEmail())
+        String email = request.getEmail() != null ? request.getEmail().trim() : "";
+        User user = userRepository.findByEmailIgnoreCase(email)
                 .orElseThrow(() -> new BadRequestException("Credenciales inválidas"));
 
         if (!user.getIsactive()) {

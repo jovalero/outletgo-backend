@@ -1,5 +1,6 @@
 package com.outletgo.backend.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalDateTime;
@@ -52,6 +53,7 @@ public class Banner {
         inverseJoinColumns = @JoinColumn(name = "store_id")
     )
     @Builder.Default
+    @JsonIgnore
     private Set<Store> stores = new HashSet<>();
 
     @ManyToMany(fetch = FetchType.LAZY)
@@ -61,6 +63,7 @@ public class Banner {
         inverseJoinColumns = @JoinColumn(name = "product_id")
     )
     @Builder.Default
+    @JsonIgnore
     private Set<Product> products = new HashSet<>();
 
     @Column(name = "created_at", nullable = false, updatable = false)

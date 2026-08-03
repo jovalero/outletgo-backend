@@ -20,6 +20,7 @@ public class BannerService {
 
     private final BannerRepository bannerRepository;
 
+    @Transactional(readOnly = true)
     public Page<Banner> getBanners(int page, int size) {
         Pageable pageable = PageRequest.of(page, size);
         return bannerRepository.findAllByOrderByCreatedAtDesc(pageable);
@@ -27,9 +28,6 @@ public class BannerService {
 
     @Transactional
     public Banner createBanner(Banner banner) {
-        if (banner.getId() == null) {
-            banner.setId(UUID.randomUUID());
-        }
         return bannerRepository.save(banner);
     }
 
