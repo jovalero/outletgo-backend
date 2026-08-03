@@ -17,7 +17,7 @@ import java.util.HashSet;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-@JsonIgnoreProperties({"hibernateLazyInitializer", "handler", "stores", "products"})
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class Banner {
 
     @Id
@@ -71,14 +71,14 @@ public class Banner {
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
-    @JsonIgnore
+    @com.fasterxml.jackson.annotation.JsonProperty("stores")
     public Set<Store> getStores() {
-        return stores;
+        return (stores != null && org.hibernate.Hibernate.isInitialized(stores)) ? stores : new java.util.HashSet<>();
     }
 
-    @JsonIgnore
+    @com.fasterxml.jackson.annotation.JsonProperty("products")
     public Set<Product> getProducts() {
-        return products;
+        return (products != null && org.hibernate.Hibernate.isInitialized(products)) ? products : new java.util.HashSet<>();
     }
 
     @PrePersist
