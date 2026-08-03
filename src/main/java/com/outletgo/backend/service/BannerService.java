@@ -28,20 +28,28 @@ public class BannerService {
 
     @Transactional
     public Banner createBanner(Banner banner) {
+        if (banner.getId() == null) {
+            banner.setId(UUID.randomUUID());
+        }
         return bannerRepository.save(banner);
     }
 
     @Transactional
     public Banner updateBannerStatus(UUID id, String status) {
-        Banner banner = bannerRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Banner no encontrado"));
-        banner.setStatus(status);
-        return bannerRepository.save(banner);
+        Optional<Banner> optional = bannerRepository.findById(id);
+        if (optional.isPresent()) {
+            Banner banner = optional.get();
+            banner.setStatus(status);
+            return bannerRepository.save(banner);
+        }
+        return null;
     }
 
     @Transactional
     public void deleteBanner(UUID id) {
-        bannerRepository.deleteById(id);
+        if (bannerRepository.existsById(id)) {
+            bannerRepository.deleteById(id);
+        }
     }
 
     public List<Banner> getActiveBanners() {

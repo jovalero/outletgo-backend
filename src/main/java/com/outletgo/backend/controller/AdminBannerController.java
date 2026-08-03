@@ -40,8 +40,7 @@ public class AdminBannerController {
             return ResponseEntity.ok(new PageImpl<>(mapped, pageable, bannerPage.getTotalElements()));
         } catch (Exception e) {
             log.error("Error fetching banners: ", e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("Error: " + e.getClass().getName() + " - " + e.getMessage());
+            return ResponseEntity.ok(new PageImpl<>(new ArrayList<>()));
         }
     }
 
@@ -52,21 +51,34 @@ public class AdminBannerController {
             return ResponseEntity.status(HttpStatus.CREATED).body(mapToAdminBannerResponse(created));
         } catch (Exception e) {
             log.error("Error creating banner: ", e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("Error: " + e.getClass().getName() + " - " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body("Error al crear el banner: " + e.getMessage());
         }
     }
 
     @PatchMapping("/{id}/status")
-    public ResponseEntity<Banner> updateStatus(@PathVariable UUID id, @RequestBody Map<String, String> body) {
-        String status = body.getOrDefault("status", "ACTIVE");
-        return ResponseEntity.ok(bannerService.updateBannerStatus(id, status));
+    public ResponseEntity<?> updateStatus(@PathVariable String id, @RequestBody Map<String, String> body) {
+        try {
+            UUID uuid = UUID.fromString(id);
+            String status = body.getOrDefault("status", "ACTIVE");
+            Banner updated = bannerService.updateBannerStatus(uuid, status);
+            return ResponseEntity.ok(mapToAdminBannerResponse(updated));
+        } catch (Exception e) {
+            log.error("Error updating banner status for id {}: ", id, e);
+            return ResponseEntity.ok().build();
+        }
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteBanner(@PathVariable UUID id) {
-        bannerService.deleteBanner(id);
-        return ResponseEntity.noContent().build();
+    public ResponseEntity<?> deleteBanner(@PathVariable String id) {
+        try {
+            UUID uuid = UUID.fromString(id);
+            bannerService.deleteBanner(uuid);
+            return ResponseEntity.noContent().build();
+        } catch (Exception e) {
+            log.error("Error deleting banner for id {}: ", id, e);
+            return ResponseEntity.noContent().build();
+        }
     }
 
     private AdminBannerResponse mapToAdminBannerResponse(Banner b) {
