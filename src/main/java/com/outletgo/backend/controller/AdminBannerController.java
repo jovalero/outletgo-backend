@@ -90,6 +90,44 @@ public class AdminBannerController {
         }
     }
 
+    @GetMapping("/{id}")
+    public ResponseEntity<?> getBannerById(@PathVariable String id) {
+        try {
+            UUID uuid = UUID.fromString(id);
+            return bannerService.getBannerById(uuid)
+                    .map(b -> ResponseEntity.ok(mapToAdminBannerResponse(b)))
+                    .orElseGet(() -> ResponseEntity.notFound().build());
+        } catch (Exception e) {
+            log.error("Error fetching banner by id {}: ", id, e);
+            return ResponseEntity.notFound().build();
+        }
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<?> updateBanner(@PathVariable String id, @RequestBody CreateBannerRequest req) {
+        try {
+            UUID uuid = UUID.fromString(id);
+            Banner updateData = Banner.builder()
+                    .title(req.getTitle())
+                    .description(req.getDescription())
+                    .imageUrl(req.getImageUrl())
+                    .type(req.getType())
+                    .startDate(req.getStartDate())
+                    .endDate(req.getEndDate())
+                    .build();
+
+            Banner updated = bannerService.updateBanner(uuid, updateData);
+            if (updated != null) {
+                return ResponseEntity.ok(mapToAdminBannerResponse(updated));
+            }
+            return ResponseEntity.notFound().build();
+        } catch (Exception e) {
+            log.error("Error updating banner id {}: ", id, e);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body("Error al actualizar el banner: " + e.getMessage());
+        }
+    }
+
     @PatchMapping("/{id}/status")
     public ResponseEntity<?> updateStatus(@PathVariable String id, @RequestBody Map<String, String> body) {
         try {

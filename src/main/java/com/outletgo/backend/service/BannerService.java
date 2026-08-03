@@ -44,6 +44,23 @@ public class BannerService {
     }
 
     @Transactional
+    public Banner updateBanner(UUID id, Banner newBannerData) {
+        Optional<Banner> optional = bannerRepository.findById(id);
+        if (optional.isPresent()) {
+            Banner banner = optional.get();
+            if (newBannerData.getTitle() != null) banner.setTitle(newBannerData.getTitle());
+            if (newBannerData.getDescription() != null) banner.setDescription(newBannerData.getDescription());
+            if (newBannerData.getImageUrl() != null) banner.setImageUrl(newBannerData.getImageUrl());
+            if (newBannerData.getType() != null) banner.setType(newBannerData.getType());
+            if (newBannerData.getStartDate() != null) banner.setStartDate(newBannerData.getStartDate());
+            if (newBannerData.getEndDate() != null) banner.setEndDate(newBannerData.getEndDate());
+            if (newBannerData.getStatus() != null) banner.setStatus(newBannerData.getStatus());
+            return bannerRepository.save(banner);
+        }
+        return null;
+    }
+
+    @Transactional
     public void deleteBanner(UUID id) {
         if (bannerRepository.existsById(id)) {
             bannerRepository.deleteById(id);
