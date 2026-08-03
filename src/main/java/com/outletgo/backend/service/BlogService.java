@@ -29,9 +29,6 @@ public class BlogService {
 
     @Transactional
     public BlogArticle createArticle(BlogArticle article) {
-        if (article.getId() == null) {
-            article.setId(UUID.randomUUID());
-        }
         return blogArticleRepository.save(article);
     }
 
