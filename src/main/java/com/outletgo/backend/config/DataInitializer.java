@@ -35,7 +35,6 @@ public class DataInitializer implements CommandLineRunner {
             List<String> defaultCats = List.of("Guías de Compra", "Cuidado Textil", "Pymes Textiles", "Tendencias");
             for (String catName : defaultCats) {
                 blogCategoryRepository.save(BlogCategory.builder()
-                        .id(UUID.randomUUID())
                         .name(catName)
                         .build());
             }
@@ -45,7 +44,6 @@ public class DataInitializer implements CommandLineRunner {
         // 2. Artículos por defecto
         if (blogArticleRepository.count() == 0) {
             blogArticleRepository.save(BlogArticle.builder()
-                    .id(UUID.randomUUID())
                     .title("Símbolos de Lavado en la Etiqueta: Guía Definitiva 2026")
                     .category("Cuidado Textil")
                     .date("24 de Julio, 2026")
@@ -62,7 +60,6 @@ public class DataInitializer implements CommandLineRunner {
                     .build());
 
             blogArticleRepository.save(BlogArticle.builder()
-                    .id(UUID.randomUUID())
                     .title("Cómo Comprar Indumentaria de Segunda Selección y Discontinuos con Éxito")
                     .category("Guías de Compra")
                     .date("19 de Julio, 2026")
@@ -78,7 +75,6 @@ public class DataInitializer implements CommandLineRunner {
                     .build());
 
             blogArticleRepository.save(BlogArticle.builder()
-                    .id(UUID.randomUUID())
                     .title("Guía para Comercios: Cómo Liquidad Sobrestock sin Canibalizar tu Local")
                     .category("Pymes Textiles")
                     .date("15 de Julio, 2026")
@@ -107,7 +103,6 @@ public class DataInitializer implements CommandLineRunner {
         // 4. Banners Promocionales por defecto
         if (bannerRepository.count() == 0) {
             bannerRepository.save(Banner.builder()
-                    .id(UUID.randomUUID())
                     .title("Gran Campaña de Invierno")
                     .description("Prendas y tiendas seleccionadas con hasta 50% de descuento")
                     .imageUrl("https://images.unsplash.com/photo-1483985988355-763728e1935b?q=80&w=600&auto=format&fit=crop")
@@ -116,7 +111,6 @@ public class DataInitializer implements CommandLineRunner {
                     .build());
 
             bannerRepository.save(Banner.builder()
-                    .id(UUID.randomUUID())
                     .title("Día del Zapato")
                     .description("Todo el calzado participante reunido en un solo lugar")
                     .imageUrl("https://images.unsplash.com/photo-1549298916-b41d501d3772?q=80&w=600&auto=format&fit=crop")

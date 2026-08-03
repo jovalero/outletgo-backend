@@ -69,7 +69,6 @@ public class BlogService {
             throw new IllegalArgumentException("La categoría ya existe: " + name);
         }
         BlogCategory category = BlogCategory.builder()
-                .id(UUID.randomUUID())
                 .name(name.trim())
                 .build();
         return blogCategoryRepository.save(category);
