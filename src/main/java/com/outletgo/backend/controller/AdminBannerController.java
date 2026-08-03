@@ -45,8 +45,18 @@ public class AdminBannerController {
     }
 
     @PostMapping
-    public ResponseEntity<?> createBanner(@RequestBody Banner banner) {
+    public ResponseEntity<?> createBanner(@RequestBody CreateBannerRequest req) {
         try {
+            Banner banner = Banner.builder()
+                    .title(req.getTitle())
+                    .description(req.getDescription())
+                    .imageUrl(req.getImageUrl())
+                    .type(req.getType() != null ? req.getType() : "CAMPAIGN")
+                    .status("ACTIVE")
+                    .startDate(req.getStartDate())
+                    .endDate(req.getEndDate())
+                    .build();
+
             Banner created = bannerService.createBanner(banner);
             return ResponseEntity.status(HttpStatus.CREATED).body(mapToAdminBannerResponse(created));
         } catch (Exception e) {
@@ -95,6 +105,22 @@ public class AdminBannerController {
                 .stores(new ArrayList<>())
                 .products(new ArrayList<>())
                 .build();
+    }
+
+    /** DTO de entrada para crear banners — desacoplado de la entidad JPA */
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class CreateBannerRequest {
+        private String title;
+        private String description;
+        private String imageUrl;
+        private String type;
+        private LocalDateTime startDate;
+        private LocalDateTime endDate;
+        // storeIds y productIds se ignoran por ahora (relaciones a implementar en siguiente iteración)
+        private List<String> storeIds;
+        private List<String> productIds;
     }
 
     @Data
