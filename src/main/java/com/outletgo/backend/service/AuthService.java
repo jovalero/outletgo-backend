@@ -91,7 +91,7 @@ public class AuthService {
     @Transactional(readOnly = true)
     public AuthResponse login(LoginRequest request) {
         String email = request.getEmail() != null ? request.getEmail().trim() : "";
-        User user = userRepository.findByEmailIgnoreCase(email)
+        User user = userRepository.findFirstByEmailIgnoreCase(email)
                 .orElseThrow(() -> new BadRequestException("Credenciales inválidas"));
 
         if (!user.getIsactive()) {
