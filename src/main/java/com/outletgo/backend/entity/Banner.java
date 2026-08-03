@@ -1,6 +1,7 @@
 package com.outletgo.backend.entity;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalDateTime;
@@ -16,6 +17,7 @@ import java.util.HashSet;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler", "stores", "products"})
 public class Banner {
 
     @Id
@@ -68,6 +70,16 @@ public class Banner {
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
+
+    @JsonIgnore
+    public Set<Store> getStores() {
+        return stores;
+    }
+
+    @JsonIgnore
+    public Set<Product> getProducts() {
+        return products;
+    }
 
     @PrePersist
     protected void onCreate() {
