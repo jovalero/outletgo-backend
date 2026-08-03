@@ -738,63 +738,95 @@ public class SellerController {
     // ==========================================
 
     @GetMapping("/reviews/store")
-    public ResponseEntity<Page<SellerReviewResponse>> getStoreReviews(
-            @RequestHeader("Authorization") String authHeader,
+    public ResponseEntity<?> getStoreReviews(
+            @RequestHeader(value = "Authorization", required = false) String authHeader,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "5") int size) {
+            @RequestParam(defaultValue = "5") int size,
+            @RequestParam(required = false) Integer rating,
+            @RequestParam(required = false) String sortCreatedAt) {
 
-        Store store = getAuthenticatedStore(authHeader);
-        List<Review> reviews = reviewRepository.findByStoreId(store.getId()).stream()
-                .filter(r -> r.getProduct() == null)
-                .sorted((r1, r2) -> r2.getCreatedAt().compareTo(r1.getCreatedAt()))
-                .collect(Collectors.toList());
+        try {
+            Store store = getAuthenticatedStore(authHeader);
+            List<Review> reviews = reviewRepository.findByStoreId(store.getId()).stream()
+                    .filter(r -> r != null && r.getProduct() == null)
+                    .filter(r -> rating == null || rating <= 0 || (r.getRating() != null && r.getRating().equals(rating)))
+                    .sorted((r1, r2) -> {
+                        if (r1.getCreatedAt() == null || r2.getCreatedAt() == null) return 0;
+                        return "ASC".equalsIgnoreCase(sortCreatedAt)
+                                ? r1.getCreatedAt().compareTo(r2.getCreatedAt())
+                                : r2.getCreatedAt().compareTo(r1.getCreatedAt());
+                    })
+                    .collect(Collectors.toList());
 
-        int start = Math.min(page * size, reviews.size());
-        int end = Math.min(start + size, reviews.size());
-        List<Review> pagedReviews = reviews.subList(start, end);
+            int start = Math.min(page * size, reviews.size());
+            int end = Math.min(start + size, reviews.size());
+            List<Review> pagedReviews = reviews.subList(start, end);
 
-        List<SellerReviewResponse> content = pagedReviews.stream()
-                .map(r -> SellerReviewResponse.builder()
-                        .id(r.getId().toString())
-                        .authorDisplayName(r.getUser().getEmail().split("@")[0])
-                        .rating(r.getRating())
-                        .comment(r.getComment())
-                        .createdAt(r.getCreatedAt().toString())
-                        .build())
-                .collect(Collectors.toList());
+            List<SellerReviewResponse> content = pagedReviews.stream()
+                    .map(r -> SellerReviewResponse.builder()
+                            .id(r.getId() != null ? r.getId().toString() : "")
+                            .authorDisplayName(r.getUser() != null && r.getUser().getEmail() != null ? r.getUser().getEmail().split("@")[0] : "Cliente")
+                            .rating(r.getRating() != null ? r.getRating() : 0)
+                            .comment(r.getComment() != null ? r.getComment() : "")
+                            .createdAt(r.getCreatedAt() != null ? r.getCreatedAt().toString() : "")
+                            .build())
+                    .collect(Collectors.toList());
 
-        return ResponseEntity.ok(new PageImpl<>(content, PageRequest.of(page, size), reviews.size()));
+            return ResponseEntity.ok(new PageImpl<>(content, PageRequest.of(page, size), reviews.size()));
+        } catch (ResponseStatusException rse) {
+            throw rse;
+        } catch (Exception e) {
+            log.error("Error fetching seller store reviews: ", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Error: " + e.getClass().getName() + " - " + e.getMessage());
+        }
     }
 
     @GetMapping("/reviews/products")
-    public ResponseEntity<Page<SellerProductReviewResponse>> getProductReviews(
-            @RequestHeader("Authorization") String authHeader,
+    public ResponseEntity<?> getProductReviews(
+            @RequestHeader(value = "Authorization", required = false) String authHeader,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "5") int size) {
+            @RequestParam(defaultValue = "5") int size,
+            @RequestParam(required = false) Integer rating,
+            @RequestParam(required = false) String sortCreatedAt) {
 
-        Store store = getAuthenticatedStore(authHeader);
-        List<Review> reviews = reviewRepository.findByStoreId(store.getId()).stream()
-                .filter(r -> r.getProduct() != null)
-                .sorted((r1, r2) -> r2.getCreatedAt().compareTo(r1.getCreatedAt()))
-                .collect(Collectors.toList());
+        try {
+            Store store = getAuthenticatedStore(authHeader);
+            List<Review> reviews = reviewRepository.findByStoreId(store.getId()).stream()
+                    .filter(r -> r != null && r.getProduct() != null)
+                    .filter(r -> rating == null || rating <= 0 || (r.getRating() != null && r.getRating().equals(rating)))
+                    .sorted((r1, r2) -> {
+                        if (r1.getCreatedAt() == null || r2.getCreatedAt() == null) return 0;
+                        return "ASC".equalsIgnoreCase(sortCreatedAt)
+                                ? r1.getCreatedAt().compareTo(r2.getCreatedAt())
+                                : r2.getCreatedAt().compareTo(r1.getCreatedAt());
+                    })
+                    .collect(Collectors.toList());
 
-        int start = Math.min(page * size, reviews.size());
-        int end = Math.min(start + size, reviews.size());
-        List<Review> pagedReviews = reviews.subList(start, end);
+            int start = Math.min(page * size, reviews.size());
+            int end = Math.min(start + size, reviews.size());
+            List<Review> pagedReviews = reviews.subList(start, end);
 
-        List<SellerProductReviewResponse> content = pagedReviews.stream()
-                .map(r -> SellerProductReviewResponse.builder()
-                        .id(r.getId().toString())
-                        .authorDisplayName(r.getUser().getEmail().split("@")[0])
-                        .rating(r.getRating())
-                        .comment(r.getComment())
-                        .createdAt(r.getCreatedAt().toString())
-                        .productId(r.getProduct().getId().toString())
-                        .productName(r.getProduct().getName())
-                        .build())
-                .collect(Collectors.toList());
+            List<SellerProductReviewResponse> content = pagedReviews.stream()
+                    .map(r -> SellerProductReviewResponse.builder()
+                            .id(r.getId() != null ? r.getId().toString() : "")
+                            .authorDisplayName(r.getUser() != null && r.getUser().getEmail() != null ? r.getUser().getEmail().split("@")[0] : "Cliente")
+                            .rating(r.getRating() != null ? r.getRating() : 0)
+                            .comment(r.getComment() != null ? r.getComment() : "")
+                            .createdAt(r.getCreatedAt() != null ? r.getCreatedAt().toString() : "")
+                            .productId(r.getProduct() != null && r.getProduct().getId() != null ? r.getProduct().getId().toString() : "")
+                            .productName(r.getProduct() != null && r.getProduct().getName() != null ? r.getProduct().getName() : "")
+                            .build())
+                    .collect(Collectors.toList());
 
-        return ResponseEntity.ok(new PageImpl<>(content, PageRequest.of(page, size), reviews.size()));
+            return ResponseEntity.ok(new PageImpl<>(content, PageRequest.of(page, size), reviews.size()));
+        } catch (ResponseStatusException rse) {
+            throw rse;
+        } catch (Exception e) {
+            log.error("Error fetching seller product reviews: ", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Error: " + e.getClass().getName() + " - " + e.getMessage());
+        }
     }
 
     // ==========================================
