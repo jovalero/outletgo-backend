@@ -19,7 +19,7 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 @RestController
-@RequestMapping("/api/banners")
+@RequestMapping({"/api/banners", "/banners"})
 @CrossOrigin(origins = "*")
 public class BannerController {
 
@@ -29,7 +29,7 @@ public class BannerController {
     @Autowired
     private ProductImageRepository productImageRepository;
 
-    @GetMapping("/active")
+    @GetMapping({"", "/", "/active"})
     public ResponseEntity<List<Banner>> getActiveBanners() {
         return ResponseEntity.ok(bannerService.getActiveBanners());
     }

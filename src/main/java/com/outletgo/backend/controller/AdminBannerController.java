@@ -18,7 +18,7 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 @RestController
-@RequestMapping("/api/admin/banners")
+@RequestMapping({"/api/admin/banners", "/admin/banners"})
 @RequiredArgsConstructor
 @Slf4j
 @CrossOrigin(origins = "*")
