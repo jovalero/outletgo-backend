@@ -1,5 +1,3 @@
-package com.outletgo.backend.entity; // using repository package
-
 package com.outletgo.backend.repository;
 
 import com.outletgo.backend.entity.BlogArticle;
