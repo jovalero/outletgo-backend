@@ -18,10 +18,8 @@ public class SellerRequestService {
 
     @Transactional
     public SellerRequest createRequest(SellerRequest request) {
-        if (request.getId() == null) {
-            request.setId(UUID.randomUUID());
-        }
-        if (request.getStatus() == null) {
+        request.setId(null);
+        if (request.getStatus() == null || request.getStatus().isBlank()) {
             request.setStatus("PENDING");
         }
         return sellerRequestRepository.save(request);

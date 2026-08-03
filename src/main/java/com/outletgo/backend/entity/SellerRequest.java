@@ -46,10 +46,13 @@ public class SellerRequest {
 
     @PrePersist
     protected void onCreate() {
+        if (id == null) {
+            id = UUID.randomUUID();
+        }
         if (createdAt == null) {
             createdAt = LocalDateTime.now();
         }
-        if (status == null) {
+        if (status == null || status.isBlank()) {
             status = "PENDING";
         }
     }
