@@ -18,7 +18,7 @@ public class BlogController {
 
     private final BlogService blogService;
 
-    @GetMapping
+    @GetMapping({"", "/"})
     public ResponseEntity<List<BlogArticle>> getBlogs(
             @RequestParam(value = "query", required = false) String query,
             @RequestParam(value = "category", required = false) String category) {
