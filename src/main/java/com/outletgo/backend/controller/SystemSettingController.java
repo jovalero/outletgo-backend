@@ -15,14 +15,14 @@ public class SystemSettingController {
 
     private final SystemSettingService systemSettingService;
 
-    @GetMapping("/api/settings/{key}")
+    @GetMapping({"/api/settings/{key}", "/settings/{key}"})
     public ResponseEntity<Map<String, String>> getSetting(@PathVariable("key") String key) {
         return systemSettingService.getSettingValue(key)
                 .map(val -> ResponseEntity.ok(Map.of("key", key, "value", val)))
                 .orElse(ResponseEntity.ok(Map.of("key", key, "value", "")));
     }
 
-    @PutMapping("/api/admin/settings/{key}")
+    @PutMapping({"/api/admin/settings/{key}", "/admin/settings/{key}"})
     public ResponseEntity<SystemSetting> updateSetting(
             @PathVariable("key") String key,
             @RequestBody Map<String, String> body) {
