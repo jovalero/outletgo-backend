@@ -776,7 +776,8 @@ public class SellerController {
 
             return ResponseEntity.ok(new PageImpl<>(content, PageRequest.of(page, size), reviews.size()));
         } catch (ResponseStatusException rse) {
-            throw rse;
+            return ResponseEntity.status(rse.getStatusCode())
+                    .body(Map.of("error", rse.getReason() != null ? rse.getReason() : "No autorizado"));
         } catch (Exception e) {
             log.error("Error fetching seller store reviews: ", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -823,7 +824,8 @@ public class SellerController {
 
             return ResponseEntity.ok(new PageImpl<>(content, PageRequest.of(page, size), reviews.size()));
         } catch (ResponseStatusException rse) {
-            throw rse;
+            return ResponseEntity.status(rse.getStatusCode())
+                    .body(Map.of("error", rse.getReason() != null ? rse.getReason() : "No autorizado"));
         } catch (Exception e) {
             log.error("Error fetching seller product reviews: ", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
