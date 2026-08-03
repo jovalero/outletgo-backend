@@ -99,7 +99,7 @@ public class UserAddressService {
             user.setSelectedAddress(address);
             user.setSelectedPickupPoint(null);
         } else if ("PICKUP".equalsIgnoreCase(type)) {
-            PickupPoint pickupPoint = pickupPointRepository.findById(referenceId)
+            PickupPoint pickupPoint = pickupPointRepository.findById(UUID.fromString(referenceId))
                     .orElseThrow(() -> new RuntimeException("Punto de retiro no encontrado"));
             user.setSelectedLogisticsType("PICKUP");
             user.setSelectedPickupPoint(pickupPoint);
