@@ -46,7 +46,26 @@ public class AdminBannerController {
 
     @PostMapping
     public ResponseEntity<?> createBanner(@RequestBody CreateBannerRequest req) {
+        log.info("=== CREATE BANNER REQUEST ===");
+        log.info("title: {}", req.getTitle());
+        log.info("description: {}", req.getDescription());
+        log.info("imageUrl length: {}", req.getImageUrl() != null ? req.getImageUrl().length() : "NULL");
+        log.info("imageUrl starts with: {}", req.getImageUrl() != null && req.getImageUrl().length() > 50 ? req.getImageUrl().substring(0, 50) : req.getImageUrl());
+        log.info("type: {}", req.getType());
+        log.info("startDate: {}", req.getStartDate());
+        log.info("endDate: {}", req.getEndDate());
+        log.info("storeIds: {}", req.getStoreIds());
+        log.info("productIds: {}", req.getProductIds());
+        log.info("============================");
+
         try {
+            if (req.getTitle() == null || req.getTitle().isBlank()) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Error: el campo 'title' es requerido.");
+            }
+            if (req.getImageUrl() == null || req.getImageUrl().isBlank()) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Error: el campo 'imageUrl' es requerido.");
+            }
+
             Banner banner = Banner.builder()
                     .title(req.getTitle())
                     .description(req.getDescription())
@@ -60,9 +79,14 @@ public class AdminBannerController {
             Banner created = bannerService.createBanner(banner);
             return ResponseEntity.status(HttpStatus.CREATED).body(mapToAdminBannerResponse(created));
         } catch (Exception e) {
-            log.error("Error creating banner: ", e);
+            log.error("Error creating banner - Exception type: {}", e.getClass().getName());
+            log.error("Error creating banner - Message: {}", e.getMessage());
+            if (e.getCause() != null) {
+                log.error("Error creating banner - Cause: {}", e.getCause().getMessage());
+            }
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body("Error al crear el banner: " + e.getMessage());
+                    .body("Error al crear banner: [" + e.getClass().getSimpleName() + "] " + e.getMessage()
+                            + (e.getCause() != null ? " | Causa: " + e.getCause().getMessage() : ""));
         }
     }
 
@@ -116,7 +140,9 @@ public class AdminBannerController {
         private String description;
         private String imageUrl;
         private String type;
+        @com.fasterxml.jackson.annotation.JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss", shape = com.fasterxml.jackson.annotation.JsonFormat.Shape.STRING)
         private LocalDateTime startDate;
+        @com.fasterxml.jackson.annotation.JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss", shape = com.fasterxml.jackson.annotation.JsonFormat.Shape.STRING)
         private LocalDateTime endDate;
         // storeIds y productIds se ignoran por ahora (relaciones a implementar en siguiente iteración)
         private List<String> storeIds;
