@@ -45,4 +45,8 @@ public class Store {
 
     @Column(name = "rating_count")
     private Integer ratingCount = 0;
+
+    @OneToMany(mappedBy = "store", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
+    private java.util.List<StoreSchedule> schedules = new java.util.ArrayList<>();
 }

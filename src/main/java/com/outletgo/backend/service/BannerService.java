@@ -31,6 +31,19 @@ public class BannerService {
         return bannerRepository.save(banner);
     }
 
+    @Transactional
+    public Banner updateBannerStatus(UUID id, String status) {
+        Banner banner = bannerRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Banner no encontrado"));
+        banner.setStatus(status);
+        return bannerRepository.save(banner);
+    }
+
+    @Transactional
+    public void deleteBanner(UUID id) {
+        bannerRepository.deleteById(id);
+    }
+
     public List<Banner> getActiveBanners() {
         LocalDateTime now = LocalDateTime.now();
         return bannerRepository.findByStatusAndStartDateLessThanEqualAndEndDateGreaterThanEqualOrderByCreatedAtDesc(

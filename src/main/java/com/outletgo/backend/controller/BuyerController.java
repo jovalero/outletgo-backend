@@ -87,6 +87,9 @@ public class BuyerController {
     private StoreSocialRepository storeSocialRepository;
 
     @Autowired
+    private StoreScheduleRepository storeScheduleRepository;
+
+    @Autowired
     private PasswordEncoder passwordEncoder;
 
     @Autowired
@@ -309,21 +312,34 @@ public class BuyerController {
                         .build())
                 .collect(Collectors.toList());
 
+        List<StoreSchedule> dbSchedules = storeScheduleRepository.findByStoreIdOrderByDayOfWeekAsc(storeId);
         List<StoreScheduleDto> schedule = new ArrayList<>();
-        for (int i = 1; i <= 6; i++) {
+
+        if (dbSchedules.isEmpty()) {
+            for (int i = 1; i <= 6; i++) {
+                schedule.add(StoreScheduleDto.builder()
+                        .dayOfWeek(i)
+                        .isOpen(true)
+                        .openTime("10:00")
+                        .closeTime("20:00")
+                        .build());
+            }
             schedule.add(StoreScheduleDto.builder()
-                    .dayOfWeek(i)
-                    .isOpen(true)
-                    .openTime("10:00")
-                    .closeTime("20:00")
+                    .dayOfWeek(7)
+                    .isOpen(false)
+                    .openTime(null)
+                    .closeTime(null)
                     .build());
+        } else {
+            for (StoreSchedule s : dbSchedules) {
+                schedule.add(StoreScheduleDto.builder()
+                        .dayOfWeek(s.getDayOfWeek())
+                        .isOpen(Boolean.TRUE.equals(s.getIsOpen()))
+                        .openTime(s.getOpenTime())
+                        .closeTime(s.getCloseTime())
+                        .build());
+            }
         }
-        schedule.add(StoreScheduleDto.builder()
-                .dayOfWeek(7)
-                .isOpen(false)
-                .openTime(null)
-                .closeTime(null)
-                .build());
 
         Double dist = null;
         Double storeLat = null;

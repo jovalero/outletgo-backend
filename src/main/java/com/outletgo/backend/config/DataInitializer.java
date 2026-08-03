@@ -99,26 +99,5 @@ public class DataInitializer implements CommandLineRunner {
                     .build());
             log.info("Configuración de video B2B inicializada.");
         }
-
-        // 4. Banners Promocionales por defecto
-        if (bannerRepository.count() == 0) {
-            bannerRepository.save(Banner.builder()
-                    .title("Gran Campaña de Invierno")
-                    .description("Prendas y tiendas seleccionadas con hasta 50% de descuento")
-                    .imageUrl("https://images.unsplash.com/photo-1483985988355-763728e1935b?q=80&w=600&auto=format&fit=crop")
-                    .type("CAMPAIGN")
-                    .status("ACTIVE")
-                    .build());
-
-            bannerRepository.save(Banner.builder()
-                    .title("Día del Zapato")
-                    .description("Todo el calzado participante reunido en un solo lugar")
-                    .imageUrl("https://images.unsplash.com/photo-1549298916-b41d501d3772?q=80&w=600&auto=format&fit=crop")
-                    .type("CAMPAIGN")
-                    .status("ACTIVE")
-                    .build());
-
-            log.info("Banners promocionales por defecto inicializados.");
-        }
     }
 }

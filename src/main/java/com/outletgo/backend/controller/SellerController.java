@@ -53,6 +53,8 @@ public class SellerController {
     private ModerationHistoryRepository moderationHistoryRepository;
     @Autowired
     private ChatMessageRepository chatMessageRepository;
+    @Autowired
+    private StoreScheduleRepository storeScheduleRepository;
 
     // Helper: Authenticated User
     private User getAuthenticatedUser(String authHeader) {
@@ -607,15 +609,35 @@ public class SellerController {
                 .website(socials.stream().filter(s -> "website".equalsIgnoreCase(s.getPlatformName())).map(StoreSocial::getUrl).findFirst().orElse(null))
                 .build();
 
-        // Default business hours
+        // Store Schedules from DB
+        List<StoreSchedule> dbSchedules = storeScheduleRepository.findByStoreIdOrderByDayOfWeekAsc(store.getId());
         List<Map<String, Object>> businessHours = new ArrayList<>();
-        String[] days = {"MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY", "SUNDAY"};
-        for (String day : days) {
+
+        if (dbSchedules.isEmpty()) {
+            String[] days = {"LUNES", "MARTES", "MIÉRCOLES", "JUEVES", "VIERNES", "SÁBADO", "DOMINGO"};
+            for (int i = 1; i <= 7; i++) {
+                String dayName = days[i - 1];
+                boolean isClosed = (i == 7);
+                StoreSchedule sched = StoreSchedule.builder()
+                        .store(store)
+                        .dayOfWeek(i)
+                        .dayName(dayName)
+                        .isOpen(!isClosed)
+                        .openTime(isClosed ? null : "09:00")
+                        .closeTime(isClosed ? null : "18:00")
+                        .build();
+                storeScheduleRepository.save(sched);
+                dbSchedules.add(sched);
+            }
+        }
+
+        for (StoreSchedule s : dbSchedules) {
             Map<String, Object> h = new HashMap<>();
-            h.put("day", day);
-            h.put("isClosed", "SUNDAY".equals(day));
-            h.put("openTime", "SUNDAY".equals(day) ? null : "09:00");
-            h.put("closeTime", "SUNDAY".equals(day) ? null : "18:00");
+            h.put("day", s.getDayName() != null ? s.getDayName() : "DAY_" + s.getDayOfWeek());
+            h.put("dayOfWeek", s.getDayOfWeek());
+            h.put("isClosed", !Boolean.TRUE.equals(s.getIsOpen()));
+            h.put("openTime", s.getOpenTime());
+            h.put("closeTime", s.getCloseTime());
             businessHours.add(h);
         }
 
@@ -671,6 +693,31 @@ public class SellerController {
             saveSocialLink(store, "facebook", payload.getSocial().getFacebook());
             saveSocialLink(store, "tiktok", payload.getSocial().getTiktok());
             saveSocialLink(store, "website", payload.getSocial().getWebsite());
+        }
+
+        // Business Hours update
+        if (payload.getBusinessHours() != null && !payload.getBusinessHours().isEmpty()) {
+            storeScheduleRepository.deleteByStoreId(store.getId());
+
+            String[] dayNames = {"LUNES", "MARTES", "MIÉRCOLES", "JUEVES", "VIERNES", "SÁBADO", "DOMINGO"};
+            int index = 1;
+            for (Map<String, Object> item : payload.getBusinessHours()) {
+                String dName = item.get("day") != null ? item.get("day").toString() : dayNames[Math.min(index - 1, 6)];
+                Boolean closed = Boolean.TRUE.equals(item.get("isClosed")) || Boolean.TRUE.equals(item.get("closed"));
+                String oTime = item.get("openTime") != null ? item.get("openTime").toString() : null;
+                String cTime = item.get("closeTime") != null ? item.get("closeTime").toString() : null;
+
+                StoreSchedule sched = StoreSchedule.builder()
+                        .store(store)
+                        .dayOfWeek(index)
+                        .dayName(dName)
+                        .isOpen(!closed)
+                        .openTime(closed ? null : oTime)
+                        .closeTime(closed ? null : cTime)
+                        .build();
+                storeScheduleRepository.save(sched);
+                index++;
+            }
         }
 
         return getStoreProfile(authHeader);
@@ -1001,6 +1048,7 @@ public class SellerController {
         private String phone;
         private String logoUrl;
         private SocialDto social;
+        private List<Map<String, Object>> businessHours;
 
         @Data
         public static class SocialDto {

@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.*;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -54,6 +55,18 @@ public class AdminBannerController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body("Error: " + e.getClass().getName() + " - " + e.getMessage());
         }
+    }
+
+    @PatchMapping("/{id}/status")
+    public ResponseEntity<Banner> updateStatus(@PathVariable UUID id, @RequestBody Map<String, String> body) {
+        String status = body.getOrDefault("status", "ACTIVE");
+        return ResponseEntity.ok(bannerService.updateBannerStatus(id, status));
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteBanner(@PathVariable UUID id) {
+        bannerService.deleteBanner(id);
+        return ResponseEntity.noContent().build();
     }
 
     private AdminBannerResponse mapToAdminBannerResponse(Banner b) {
