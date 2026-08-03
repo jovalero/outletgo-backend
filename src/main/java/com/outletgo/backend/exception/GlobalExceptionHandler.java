@@ -1,20 +1,20 @@
 package com.outletgo.backend.exception;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
-import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
 
-
-
 @RestControllerAdvice
+@Slf4j
 public class GlobalExceptionHandler {
 
     // Handle ResourceNotFoundException
@@ -36,6 +36,26 @@ public class GlobalExceptionHandler {
         body.put("status", HttpStatus.BAD_REQUEST.value());
         body.put("error", "Bad Request");
         body.put("message", ex.getMessage());
+        return new ResponseEntity<>(body, HttpStatus.BAD_REQUEST);
+    }
+
+    // Handle Jackson JSON deserialization errors
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<Map<String, Object>> handleMessageNotReadable(HttpMessageNotReadableException ex) {
+        String message = ex.getMessage();
+        String cause = ex.getCause() != null ? ex.getCause().getMessage() : "causa desconocida";
+
+        log.error("=== JSON DESERIALIZATION ERROR ===");
+        log.error("Message: {}", message);
+        log.error("Cause: {}", cause);
+
+        Map<String, Object> body = new HashMap<>();
+        body.put("timestamp", LocalDateTime.now());
+        body.put("status", HttpStatus.BAD_REQUEST.value());
+        body.put("error", "Error al leer el cuerpo de la solicitud");
+        body.put("message", message != null ? message : "JSON invalido");
+        body.put("cause", cause);
+
         return new ResponseEntity<>(body, HttpStatus.BAD_REQUEST);
     }
 
@@ -61,6 +81,7 @@ public class GlobalExceptionHandler {
     // Handle any other general runtime exception
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Map<String, Object>> handleGeneralException(Exception ex) {
+        log.error("=== UNHANDLED EXCEPTION ===", ex);
         Map<String, Object> body = new HashMap<>();
         body.put("timestamp", LocalDateTime.now());
         body.put("status", HttpStatus.INTERNAL_SERVER_ERROR.value());
