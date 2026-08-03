@@ -749,7 +749,7 @@ public class SellerController {
 
         try {
             Store store = getAuthenticatedStore(authHeader);
-            List<Review> reviews = reviewRepository.findByStoreId(store.getId()).stream()
+            List<Review> reviews = reviewRepository.findByStoreIdWithDetails(store.getId()).stream()
                     .filter(r -> r != null && r.getProduct() == null)
                     .filter(r -> rating == null || rating <= 0 || (r.getRating() != null && r.getRating().equals(rating)))
                     .sorted((r1, r2) -> {
@@ -794,7 +794,7 @@ public class SellerController {
 
         try {
             Store store = getAuthenticatedStore(authHeader);
-            List<Review> reviews = reviewRepository.findByStoreId(store.getId()).stream()
+            List<Review> reviews = reviewRepository.findByStoreIdWithDetails(store.getId()).stream()
                     .filter(r -> r != null && r.getProduct() != null)
                     .filter(r -> rating == null || rating <= 0 || (r.getRating() != null && r.getRating().equals(rating)))
                     .sorted((r1, r2) -> {
