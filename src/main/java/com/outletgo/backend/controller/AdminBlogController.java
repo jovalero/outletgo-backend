@@ -4,6 +4,7 @@ import com.outletgo.backend.entity.BlogArticle;
 import com.outletgo.backend.entity.BlogCategory;
 import com.outletgo.backend.service.BlogService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -14,14 +15,22 @@ import java.util.UUID;
 @RestController
 @RequestMapping({"/api/admin/blogs", "/admin/blogs"})
 @RequiredArgsConstructor
+@Slf4j
 @CrossOrigin(origins = "*")
 public class AdminBlogController {
 
     private final BlogService blogService;
 
     @PostMapping
-    public ResponseEntity<BlogArticle> createBlog(@RequestBody BlogArticle article) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(blogService.createArticle(article));
+    public ResponseEntity<?> createBlog(@RequestBody BlogArticle article) {
+        try {
+            BlogArticle created = blogService.createArticle(article);
+            return ResponseEntity.status(HttpStatus.CREATED).body(created);
+        } catch (Exception e) {
+            log.error("Error creating blog article: ", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Error: " + e.getClass().getName() + " - " + e.getMessage());
+        }
     }
 
     @PutMapping("/{id}")

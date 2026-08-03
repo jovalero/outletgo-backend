@@ -27,10 +27,10 @@ public class BlogArticle {
     @Column(nullable = false, length = 100)
     private String category;
 
-    @Column(nullable = false, length = 100)
+    @Column(length = 100)
     private String date;
 
-    @Column(nullable = false, length = 100)
+    @Column(length = 100)
     private String author;
 
     @Column(columnDefinition = "text")
@@ -68,6 +68,12 @@ public class BlogArticle {
         }
         if (color == null) {
             color = "#2B8FD4";
+        }
+        if (date == null || date.trim().isEmpty()) {
+            date = java.time.LocalDate.now().toString();
+        }
+        if (author == null || author.trim().isEmpty()) {
+            author = "Equipo OutletGo";
         }
     }
 
