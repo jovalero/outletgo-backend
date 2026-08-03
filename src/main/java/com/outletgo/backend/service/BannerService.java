@@ -6,9 +6,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
 import java.util.List;
 import java.time.LocalDateTime;
 import java.util.Optional;
@@ -22,8 +22,8 @@ public class BannerService {
 
     @Transactional(readOnly = true)
     public Page<Banner> getBanners(int page, int size) {
-        Pageable pageable = PageRequest.of(page, size);
-        return bannerRepository.findAllByOrderByCreatedAtDesc(pageable);
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
+        return bannerRepository.findAll(pageable);
     }
 
     @Transactional

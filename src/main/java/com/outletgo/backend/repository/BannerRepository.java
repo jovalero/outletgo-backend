@@ -13,7 +13,7 @@ import java.time.LocalDateTime;
 
 @Repository
 public interface BannerRepository extends JpaRepository<Banner, UUID> {
-    Page<Banner> findAllByOrderByCreatedAtDesc(Pageable pageable);
+    Page<Banner> findAll(Pageable pageable);
     List<Banner> findByStatusAndStartDateLessThanEqualAndEndDateGreaterThanEqualOrderByCreatedAtDesc(
             String status, LocalDateTime nowStart, LocalDateTime nowEnd);
 }
