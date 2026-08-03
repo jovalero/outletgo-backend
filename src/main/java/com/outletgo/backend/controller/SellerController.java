@@ -776,12 +776,11 @@ public class SellerController {
 
             return ResponseEntity.ok(new PageImpl<>(content, PageRequest.of(page, size), reviews.size()));
         } catch (ResponseStatusException rse) {
-            return ResponseEntity.status(rse.getStatusCode())
-                    .body(Map.of("error", rse.getReason() != null ? rse.getReason() : "No autorizado"));
+            log.info("Unauthenticated or missing seller store for reviews request: {}", rse.getMessage());
+            return ResponseEntity.ok(new PageImpl<>(Collections.emptyList(), PageRequest.of(page, size), 0));
         } catch (Exception e) {
             log.error("Error fetching seller store reviews: ", e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("Error: " + e.getClass().getName() + " - " + e.getMessage());
+            return ResponseEntity.ok(new PageImpl<>(Collections.emptyList(), PageRequest.of(page, size), 0));
         }
     }
 
@@ -795,6 +794,9 @@ public class SellerController {
 
         try {
             Store store = getAuthenticatedStore(authHeader);
+            if (store == null) {
+                return ResponseEntity.ok(new PageImpl<>(Collections.emptyList(), PageRequest.of(page, size), 0));
+            }
             List<Review> reviews = reviewRepository.findByStoreIdWithDetails(store.getId()).stream()
                     .filter(r -> r != null && r.getProduct() != null)
                     .filter(r -> rating == null || rating <= 0 || (r.getRating() != null && r.getRating().equals(rating)))
@@ -824,12 +826,11 @@ public class SellerController {
 
             return ResponseEntity.ok(new PageImpl<>(content, PageRequest.of(page, size), reviews.size()));
         } catch (ResponseStatusException rse) {
-            return ResponseEntity.status(rse.getStatusCode())
-                    .body(Map.of("error", rse.getReason() != null ? rse.getReason() : "No autorizado"));
+            log.info("Unauthenticated or missing seller store for product reviews request: {}", rse.getMessage());
+            return ResponseEntity.ok(new PageImpl<>(Collections.emptyList(), PageRequest.of(page, size), 0));
         } catch (Exception e) {
             log.error("Error fetching seller product reviews: ", e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("Error: " + e.getClass().getName() + " - " + e.getMessage());
+            return ResponseEntity.ok(new PageImpl<>(Collections.emptyList(), PageRequest.of(page, size), 0));
         }
     }
 
