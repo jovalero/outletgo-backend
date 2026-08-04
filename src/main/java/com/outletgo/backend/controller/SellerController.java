@@ -416,15 +416,13 @@ public class SellerController {
         product.setTags(tags);
         productRepository.save(product);
 
-        // Recreate Images
-        List<ProductImage> oldImgs = productImageRepository.findByProductId(product.getId());
-        productImageRepository.deleteAll(oldImgs);
+        // Recreate Images using bulk SQL delete to avoid stale entity lock issues
+        productImageRepository.deleteByProductId(product.getId());
 
         if (payload.getImageUrls() != null) {
             for (String url : payload.getImageUrls()) {
                 if (url != null && !url.trim().isEmpty()) {
                     productImageRepository.save(ProductImage.builder()
-                            .id(UUID.randomUUID())
                             .product(product)
                             .imageUrl(url.trim())
                             .build());
@@ -432,14 +430,12 @@ public class SellerController {
             }
         }
 
-        // Recreate Variations
-        List<ProductVariation> oldVars = productVariationRepository.findByProductId(product.getId());
-        productVariationRepository.deleteAll(oldVars);
+        // Recreate Variations using bulk SQL delete
+        productVariationRepository.deleteByProductId(product.getId());
 
         if (payload.getVariations() != null) {
             for (SellerProductSavePayload.VariationDto v : payload.getVariations()) {
                 productVariationRepository.save(ProductVariation.builder()
-                        .id(UUID.randomUUID())
                         .product(product)
                         .size(v.getSize())
                         .color(v.getColor())
