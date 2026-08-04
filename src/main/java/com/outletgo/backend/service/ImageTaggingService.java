@@ -1,5 +1,7 @@
 package com.outletgo.backend.service;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -10,17 +12,16 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.*;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 @Service
 @Slf4j
 public class ImageTaggingService {
 
-    @Value("${google.vision.api-key:}")
+    @Value("${GOOGLE_VISION_API_KEY:${google.vision.api-key:}}")
     private String visionApiKey;
 
     private final HttpClient httpClient;
+    private final ObjectMapper objectMapper;
 
     private static final Map<String, String> TRANSLATION_MAP = Map.ofEntries(
             Map.entry("shoe", "calzado"),
@@ -65,8 +66,20 @@ public class ImageTaggingService {
 
     public ImageTaggingService() {
         this.httpClient = HttpClient.newBuilder()
-                .connectTimeout(Duration.ofSeconds(5))
+                .connectTimeout(Duration.ofSeconds(6))
                 .build();
+        this.objectMapper = new ObjectMapper();
+    }
+
+    private String getResolvedApiKey() {
+        if (visionApiKey != null && !visionApiKey.trim().isEmpty()) {
+            return visionApiKey.trim();
+        }
+        String envKey = System.getenv("GOOGLE_VISION_API_KEY");
+        if (envKey != null && !envKey.trim().isEmpty()) {
+            return envKey.trim();
+        }
+        return null;
     }
 
     /**
@@ -96,13 +109,16 @@ public class ImageTaggingService {
             return detected;
         }
 
-        if (visionApiKey != null && !visionApiKey.trim().isEmpty()) {
+        String apiKey = getResolvedApiKey();
+        if (apiKey != null) {
             try {
                 String base64Image = Base64.getEncoder().encodeToString(imageBytes);
-                detected.addAll(callGoogleVisionApiBase64(base64Image));
+                detected.addAll(callGoogleVisionApiBase64(base64Image, apiKey));
             } catch (Exception e) {
                 log.warn("Fallo la llamada a Google Vision API por bytes: {}", e.getMessage());
             }
+        } else {
+            log.warn("No se encontro GOOGLE_VISION_API_KEY en variables de entorno ni application.properties.");
         }
 
         // Fallback autonomo por nombre de archivo
@@ -121,9 +137,10 @@ public class ImageTaggingService {
     private Set<String> processImageUrl(String url) {
         Set<String> tags = new LinkedHashSet<>();
 
-        if (visionApiKey != null && !visionApiKey.trim().isEmpty()) {
+        String apiKey = getResolvedApiKey();
+        if (apiKey != null) {
             try {
-                tags.addAll(callGoogleVisionApiUrl(url));
+                tags.addAll(callGoogleVisionApiUrl(url, apiKey));
             } catch (Exception e) {
                 log.warn("Error consultando Google Vision API para URL {}: {}", url, e.getMessage());
             }
@@ -137,24 +154,24 @@ public class ImageTaggingService {
         return tags;
     }
 
-    private Set<String> callGoogleVisionApiUrl(String imageUrl) throws Exception {
+    private Set<String> callGoogleVisionApiUrl(String imageUrl, String apiKey) throws Exception {
         String jsonPayload = String.format(
                 "{\"requests\":[{\"image\":{\"source\":{\"imageUri\":\"%s\"}},\"features\":[{\"type\":\"LABEL_DETECTION\",\"maxResults\":8},{\"type\":\"OBJECT_LOCALIZATION\",\"maxResults\":5}]}]}",
                 imageUrl
         );
-        return executeVisionRequest(jsonPayload);
+        return executeVisionRequest(jsonPayload, apiKey);
     }
 
-    private Set<String> callGoogleVisionApiBase64(String base64Content) throws Exception {
+    private Set<String> callGoogleVisionApiBase64(String base64Content, String apiKey) throws Exception {
         String jsonPayload = String.format(
                 "{\"requests\":[{\"image\":{\"content\":\"%s\"}},\"features\":[{\"type\":\"LABEL_DETECTION\",\"maxResults\":8},{\"type\":\"OBJECT_LOCALIZATION\",\"maxResults\":5}]}]}",
                 base64Content
         );
-        return executeVisionRequest(jsonPayload);
+        return executeVisionRequest(jsonPayload, apiKey);
     }
 
-    private Set<String> executeVisionRequest(String jsonPayload) throws Exception {
-        String endpoint = "https://vision.googleapis.com/v1/images:annotate?key=" + visionApiKey.trim();
+    private Set<String> executeVisionRequest(String jsonPayload, String apiKey) throws Exception {
+        String endpoint = "https://vision.googleapis.com/v1/images:annotate?key=" + apiKey;
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create(endpoint))
                 .header("Content-Type", "application/json")
@@ -166,18 +183,45 @@ public class ImageTaggingService {
 
         Set<String> tags = new LinkedHashSet<>();
         if (response.statusCode() == 200) {
-            String body = response.body();
-            Pattern descriptionPattern = Pattern.compile("\"description\"\\s*:\\s*\"([^\"]+)\"", Pattern.CASE_INSENSITIVE);
-            Matcher matcher = descriptionPattern.matcher(body);
-            while (matcher.find()) {
-                String rawWord = matcher.group(1).toLowerCase().trim();
-                String translated = TRANSLATION_MAP.getOrDefault(rawWord, rawWord);
-                if (translated.length() >= 3 && !translated.equalsIgnoreCase("font") && !translated.equalsIgnoreCase("logo")) {
-                    tags.add(translated);
+            JsonNode root = objectMapper.readTree(response.body());
+            JsonNode responses = root.path("responses");
+            if (responses.isArray() && responses.size() > 0) {
+                JsonNode firstResp = responses.get(0);
+
+                // 1. Label Annotations (description)
+                JsonNode labels = firstResp.path("labelAnnotations");
+                if (labels.isArray()) {
+                    for (JsonNode l : labels) {
+                        String desc = l.path("description").asText();
+                        if (desc != null && !desc.isBlank()) {
+                            addTag(tags, desc);
+                        }
+                    }
+                }
+
+                // 2. Object Localizations (name)
+                JsonNode objects = firstResp.path("localizedObjectAnnotations");
+                if (objects.isArray()) {
+                    for (JsonNode o : objects) {
+                        String name = o.path("name").asText();
+                        if (name != null && !name.isBlank()) {
+                            addTag(tags, name);
+                        }
+                    }
                 }
             }
+        } else {
+            log.warn("Google Vision API devolvio status HTTP {}: {}", response.statusCode(), response.body());
         }
         return tags;
+    }
+
+    private void addTag(Set<String> tags, String rawWord) {
+        String lower = rawWord.toLowerCase().trim();
+        String translated = TRANSLATION_MAP.getOrDefault(lower, lower);
+        if (translated.length() >= 3 && !translated.equalsIgnoreCase("font") && !translated.equalsIgnoreCase("logo")) {
+            tags.add(translated);
+        }
     }
 
     private Set<String> extractKeywordsFromText(String text) {
@@ -191,3 +235,4 @@ public class ImageTaggingService {
         return found;
     }
 }
+
