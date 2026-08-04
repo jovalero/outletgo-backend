@@ -430,17 +430,51 @@ public class SellerController {
             }
         }
 
-        // Recreate Variations using bulk SQL delete
-        productVariationRepository.deleteByProductId(product.getId());
+        // Synchronize Variations in-place to preserve Foreign Key relationships with OrderItems
+        List<ProductVariation> existingVars = productVariationRepository.findByProductId(product.getId());
+        List<SellerProductSavePayload.VariationDto> payloadVars = payload.getVariations() != null ? payload.getVariations() : List.of();
+        Set<UUID> keptVariationIds = new HashSet<>();
 
-        if (payload.getVariations() != null) {
-            for (SellerProductSavePayload.VariationDto v : payload.getVariations()) {
-                productVariationRepository.save(ProductVariation.builder()
+        for (SellerProductSavePayload.VariationDto pvDto : payloadVars) {
+            if (pvDto.getSize() == null || pvDto.getColor() == null) continue;
+            String sizeClean = pvDto.getSize().trim();
+            String colorClean = pvDto.getColor().trim();
+            int stockClean = Math.max(0, pvDto.getStock());
+
+            Optional<ProductVariation> match = existingVars.stream()
+                    .filter(ev -> ev.getSize().equalsIgnoreCase(sizeClean) && ev.getColor().equalsIgnoreCase(colorClean))
+                    .findFirst();
+
+            if (match.isPresent()) {
+                ProductVariation existing = match.get();
+                existing.setSize(sizeClean);
+                existing.setColor(colorClean);
+                existing.setStock(stockClean);
+                productVariationRepository.save(existing);
+                keptVariationIds.add(existing.getId());
+            } else {
+                ProductVariation newVar = productVariationRepository.save(ProductVariation.builder()
+                        .id(UUID.randomUUID())
                         .product(product)
-                        .size(v.getSize())
-                        .color(v.getColor())
-                        .stock(v.getStock())
+                        .size(sizeClean)
+                        .color(colorClean)
+                        .stock(stockClean)
                         .build());
+                keptVariationIds.add(newVar.getId());
+            }
+        }
+
+        // Clean up variations removed from payload (if not referenced by historical orders)
+        for (ProductVariation oldVar : existingVars) {
+            if (!keptVariationIds.contains(oldVar.getId())) {
+                try {
+                    productVariationRepository.delete(oldVar);
+                    productVariationRepository.flush();
+                } catch (Exception e) {
+                    // Safe fallback if referenced by order_items: zero out stock instead of violating FK constraint
+                    oldVar.setStock(0);
+                    productVariationRepository.save(oldVar);
+                }
             }
         }
 
