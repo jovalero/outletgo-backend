@@ -17,8 +17,8 @@ WORKDIR /app
 # Copy the compiled JAR from the build stage
 COPY --from=build /app/target/*.jar app.jar
 
-# Expose the standard Spring Boot port
-EXPOSE 8080
+# Expose default ports
+EXPOSE 8080 10000
 
-# Start the application
-ENTRYPOINT ["java", "-jar", "app.jar"]
+# Start the application with dynamic PORT support
+ENTRYPOINT ["sh", "-c", "java -Dserver.port=${PORT:-8080} -jar app.jar"]
