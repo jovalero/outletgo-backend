@@ -49,7 +49,7 @@ public class PublicCatalogController {
     @GetMapping({"/api/products/new-arrivals", "/api/catalog/products/new-arrivals", "/products/new-arrivals"})
     public ResponseEntity<List<CatalogProductDto>> getNewArrivals(
             @RequestParam(required = false, defaultValue = "10") int limit) {
-        Pageable pageable = PageRequest.of(0, limit, Sort.by("createdAt").descending());
+        Pageable pageable = PageRequest.of(0, limit);
         Page<Product> products = productRepository.findAll(pageable);
         List<CatalogProductDto> list = products.getContent().stream()
                 .filter(p -> Boolean.TRUE.equals(p.getIsactive()))
