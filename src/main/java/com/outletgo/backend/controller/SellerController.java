@@ -242,9 +242,9 @@ public class SellerController {
                 .map(p -> {
                     List<ProductImage> imgs = productImageRepository.findByProductId(p.getId());
                     String thumb = imgs.isEmpty() ? null : imgs.get(0).getImageUrl();
-                    int totalStock = productVariationRepository.findByProductId(p.getId()).stream()
-                            .mapToInt(ProductVariation::getStock)
-                            .sum();
+                    List<ProductVariation> vars = productVariationRepository.findByProductId(p.getId());
+                    int totalStock = vars.stream().mapToInt(ProductVariation::getStock).sum();
+                    int lowStockCount = (int) vars.stream().filter(v -> v.getStock() <= 5).count();
 
                     return SellerProductSummaryResponse.builder()
                             .id(p.getId().toString())
@@ -252,6 +252,7 @@ public class SellerController {
                             .thumbnailUrl(thumb)
                             .price(p.getBasePrice())
                             .totalStock(totalStock)
+                            .lowStockCount(lowStockCount)
                             .status(getProductStatus(p))
                             .build();
                 })
@@ -1006,6 +1007,7 @@ public class SellerController {
         private String thumbnailUrl;
         private double price;
         private int totalStock;
+        private int lowStockCount;
         private String status;
     }
 
