@@ -289,7 +289,7 @@ public class SellerController {
                 .id(product.getId().toString())
                 .name(product.getName())
                 .description(product.getDescription())
-                .categoryId(product.getCategory().getId().toString())
+                .categoryId(product.getCategory() != null ? product.getCategory().getName().toLowerCase() : "ropa")
                 .tags(tags)
                 .basePrice(product.getBasePrice())
                 .imageUrls(imageUrls)
