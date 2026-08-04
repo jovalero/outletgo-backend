@@ -25,8 +25,11 @@ import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+import org.springframework.transaction.annotation.Transactional;
+
 @RestController
 @CrossOrigin
+@Transactional(readOnly = true)
 public class PublicCatalogController {
 
     @Autowired
