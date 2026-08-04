@@ -20,4 +20,10 @@ public class Tag {
 
     @Column(name = "tag_name", nullable = false, unique = true, length = 50)
     private String tagName;
+    @PrePersist
+    protected void onCreate() {
+        if (id == null) {
+            id = UUID.randomUUID();
+        }
+    }
 }

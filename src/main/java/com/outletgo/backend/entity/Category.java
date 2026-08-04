@@ -20,4 +20,10 @@ public class Category {
 
     @Column(nullable = false, unique = true, length = 100)
     private String name;
+    @PrePersist
+    protected void onCreate() {
+        if (id == null) {
+            id = UUID.randomUUID();
+        }
+    }
 }

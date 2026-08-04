@@ -298,6 +298,28 @@ public class SellerController {
                 .build());
     }
 
+    private Category resolveCategory(String categoryIdOrName) {
+        if (categoryIdOrName == null || categoryIdOrName.trim().isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Categoría no especificada");
+        }
+        String cleanStr = categoryIdOrName.trim();
+        try {
+            UUID uuid = UUID.fromString(cleanStr);
+            Optional<Category> opt = categoryRepository.findById(uuid);
+            if (opt.isPresent()) {
+                return opt.get();
+            }
+        } catch (IllegalArgumentException ignored) {
+            // Not a UUID string (e.g. "ropa", "calzado"), fallback to name search
+        }
+
+        return categoryRepository.findByName(cleanStr)
+                .orElseGet(() -> categoryRepository.findAll().stream()
+                        .filter(c -> c.getName().equalsIgnoreCase(cleanStr))
+                        .findFirst()
+                        .orElseGet(() -> categoryRepository.save(Category.builder().name(cleanStr).build())));
+    }
+
     @PostMapping("/products")
     public ResponseEntity<SellerProductSaveResult> createSellerProduct(
             @RequestHeader("Authorization") String authHeader,
@@ -305,15 +327,15 @@ public class SellerController {
 
         Store store = getAuthenticatedStore(authHeader);
 
-        Category category = categoryRepository.findById(UUID.fromString(payload.getCategoryId()))
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Categoría no encontrada"));
+        Category category = resolveCategory(payload.getCategoryId());
 
         Set<Tag> tags = new HashSet<>();
         if (payload.getTags() != null) {
             for (String tagName : payload.getTags()) {
                 if (tagName != null && !tagName.trim().isEmpty()) {
-                    Tag tag = tagRepository.findByTagName(tagName.trim())
-                            .orElseGet(() -> tagRepository.save(Tag.builder().tagName(tagName.trim()).build()));
+                    String cleanTag = tagName.trim();
+                    Tag tag = tagRepository.findByTagName(cleanTag)
+                            .orElseGet(() -> tagRepository.save(Tag.builder().tagName(cleanTag).build()));
                     tags.add(tag);
                 }
             }
@@ -372,8 +394,7 @@ public class SellerController {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "No tienes permiso para actualizar este producto");
         }
 
-        Category category = categoryRepository.findById(UUID.fromString(payload.getCategoryId()))
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Categoría no encontrada"));
+        Category category = resolveCategory(payload.getCategoryId());
 
         Set<Tag> tags = new HashSet<>();
         if (payload.getTags() != null) {
