@@ -361,7 +361,12 @@ public class AdminController {
 
         AdminReviewResponse.ProductDto productDto = null;
         if (r.getProduct() != null) {
-            productDto = new AdminReviewResponse.ProductDto(r.getProduct().getId(), r.getProduct().getName());
+            String imgUrl = null;
+            List<ProductImage> imgs = productImageRepository.findByProductId(r.getProduct().getId());
+            if (imgs != null && !imgs.isEmpty()) {
+                imgUrl = imgs.get(0).getImageUrl();
+            }
+            productDto = new AdminReviewResponse.ProductDto(r.getProduct().getId(), r.getProduct().getName(), imgUrl);
         }
 
         return AdminReviewResponse.builder()
@@ -1531,6 +1536,7 @@ public class AdminController {
         public static class ProductDto {
             private UUID id;
             private String name;
+            private String imageUrl;
         }
 
         @Data
