@@ -358,6 +358,7 @@ public class SellerController {
             for (String url : payload.getImageUrls()) {
                 if (url != null && !url.trim().isEmpty()) {
                     productImageRepository.save(ProductImage.builder()
+                            .id(UUID.randomUUID())
                             .product(savedProduct)
                             .imageUrl(url.trim())
                             .build());
@@ -369,6 +370,7 @@ public class SellerController {
         if (payload.getVariations() != null) {
             for (SellerProductSavePayload.VariationDto v : payload.getVariations()) {
                 productVariationRepository.save(ProductVariation.builder()
+                        .id(UUID.randomUUID())
                         .product(savedProduct)
                         .size(v.getSize())
                         .color(v.getColor())
@@ -422,6 +424,7 @@ public class SellerController {
             for (String url : payload.getImageUrls()) {
                 if (url != null && !url.trim().isEmpty()) {
                     productImageRepository.save(ProductImage.builder()
+                            .id(UUID.randomUUID())
                             .product(product)
                             .imageUrl(url.trim())
                             .build());
@@ -436,6 +439,7 @@ public class SellerController {
         if (payload.getVariations() != null) {
             for (SellerProductSavePayload.VariationDto v : payload.getVariations()) {
                 productVariationRepository.save(ProductVariation.builder()
+                        .id(UUID.randomUUID())
                         .product(product)
                         .size(v.getSize())
                         .color(v.getColor())

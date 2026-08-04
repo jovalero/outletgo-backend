@@ -30,4 +30,11 @@ public class ProductVariation {
 
     @Column(nullable = false)
     private Integer stock = 0;
+
+    @PrePersist
+    protected void onCreate() {
+        if (id == null) {
+            id = UUID.randomUUID();
+        }
+    }
 }
