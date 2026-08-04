@@ -259,15 +259,24 @@ public class BuyerController {
     public ResponseEntity<LensSearchResultResponse> searchByImage(
             @RequestParam("image") MultipartFile imageFile) {
 
+        log.info("[LENS SEARCH] Petición recibida en /search/visual. Archivo: '{}', tamaño: {} bytes, contentType: '{}'",
+                imageFile != null ? imageFile.getOriginalFilename() : "null",
+                imageFile != null ? imageFile.getSize() : 0,
+                imageFile != null ? imageFile.getContentType() : "null");
+
         Set<String> detectedTags = new LinkedHashSet<>();
         if (imageFile != null && !imageFile.isEmpty()) {
             try {
                 byte[] bytes = imageFile.getBytes();
                 detectedTags = imageTaggingService.extractTagsFromImageBytes(bytes, imageFile.getOriginalFilename());
             } catch (Exception e) {
-                log.warn("Error al procesar archivo de imagen en busqueda visual: {}", e.getMessage());
+                log.error("[LENS SEARCH] Error leyendo bytes de la imagen recibida: {}", e.getMessage(), e);
             }
+        } else {
+            log.warn("[LENS SEARCH] Petición recibida pero imageFile es nulo o está vacío.");
         }
+
+        log.info("[LENS SEARCH] Etiquetas finales utilizadas para búsqueda: {}", detectedTags);
 
         List<Product> activeProducts = productRepository.findByIsactiveTrue();
         Set<String> finalTags = detectedTags;

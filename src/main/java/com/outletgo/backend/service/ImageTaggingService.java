@@ -106,27 +106,36 @@ public class ImageTaggingService {
     public Set<String> extractTagsFromImageBytes(byte[] imageBytes, String filename) {
         Set<String> detected = new LinkedHashSet<>();
         if (imageBytes == null || imageBytes.length == 0) {
+            log.warn("[IMAGE TAGGING] imageBytes está vacío o nulo.");
             return detected;
         }
 
         String apiKey = getResolvedApiKey();
         if (apiKey != null) {
+            log.info("[IMAGE TAGGING] API Key resuelta (longitud: {} chars, inicio: '{}...'). Enviando {} bytes a Google Vision.",
+                    apiKey.length(), apiKey.length() > 6 ? apiKey.substring(0, 6) : apiKey, imageBytes.length);
             try {
                 String base64Image = Base64.getEncoder().encodeToString(imageBytes);
                 detected.addAll(callGoogleVisionApiBase64(base64Image, apiKey));
+                log.info("[IMAGE TAGGING] Etiquetas obtenidas de Google Vision API: {}", detected);
             } catch (Exception e) {
-                log.warn("Fallo la llamada a Google Vision API por bytes: {}", e.getMessage());
+                log.error("[IMAGE TAGGING] Excepción al invocar Google Vision API: {}", e.getMessage(), e);
             }
         } else {
-            log.warn("No se encontro GOOGLE_VISION_API_KEY en variables de entorno ni application.properties.");
+            log.warn("[IMAGE TAGGING] ALERTA CRÍTICA: No se encontró GOOGLE_VISION_API_KEY en variables de entorno ni application.properties.");
         }
 
-        // Fallback autonomo por nombre de archivo
+        // Fallback autónomo por nombre de archivo
         if (detected.isEmpty() && filename != null) {
-            detected.addAll(extractKeywordsFromText(filename));
+            Set<String> filenameTags = extractKeywordsFromText(filename);
+            if (!filenameTags.isEmpty()) {
+                log.info("[IMAGE TAGGING] Se aplicó fallback por nombre de archivo ('{}'): {}", filename, filenameTags);
+                detected.addAll(filenameTags);
+            }
         }
 
         if (detected.isEmpty()) {
+            log.warn("[IMAGE TAGGING] CAÍDA EN FALLBACK DEFAULT: No se obtuvieron etiquetas de Google Vision ni del nombre del archivo. Asignando ['outlet', 'moda'].");
             detected.add("outlet");
             detected.add("moda");
         }
@@ -181,9 +190,15 @@ public class ImageTaggingService {
 
         HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
 
+        log.info("[GOOGLE VISION API HTTP] Status Code: {}", response.statusCode());
+
         Set<String> tags = new LinkedHashSet<>();
         if (response.statusCode() == 200) {
-            JsonNode root = objectMapper.readTree(response.body());
+            String body = response.body();
+            log.info("[GOOGLE VISION API HTTP] Body devuelto (primeros 400 chars): {}",
+                    body != null && body.length() > 400 ? body.substring(0, 400) + "..." : body);
+
+            JsonNode root = objectMapper.readTree(body);
             JsonNode responses = root.path("responses");
             if (responses.isArray() && responses.size() > 0) {
                 JsonNode firstResp = responses.get(0);
@@ -211,7 +226,7 @@ public class ImageTaggingService {
                 }
             }
         } else {
-            log.warn("Google Vision API devolvio status HTTP {}: {}", response.statusCode(), response.body());
+            log.error("[GOOGLE VISION API HTTP ERROR] Google Vision devolvió status {}: {}", response.statusCode(), response.body());
         }
         return tags;
     }
