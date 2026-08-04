@@ -3,6 +3,7 @@ package com.outletgo.backend.controller;
 import com.outletgo.backend.config.JwtUtil;
 import com.outletgo.backend.entity.*;
 import com.outletgo.backend.repository.*;
+import com.outletgo.backend.service.ImageTaggingService;
 import io.jsonwebtoken.Claims;
 import lombok.*;
 import lombok.extern.slf4j.Slf4j;
@@ -33,6 +34,8 @@ public class SellerController {
     private StoreRepository storeRepository;
     @Autowired
     private ProductRepository productRepository;
+    @Autowired
+    private ImageTaggingService imageTaggingService;
     @Autowired
     private ProductVariationRepository productVariationRepository;
     @Autowired
@@ -321,6 +324,37 @@ public class SellerController {
                         .orElseGet(() -> categoryRepository.save(Category.builder().name(cleanStr).build())));
     }
 
+    private Set<Tag> resolveTags(List<String> manualTags, List<String> imageUrls) {
+        Set<Tag> tags = new HashSet<>();
+        Set<String> tagNames = new LinkedHashSet<>();
+
+        if (manualTags != null) {
+            for (String t : manualTags) {
+                if (t != null && !t.trim().isEmpty()) {
+                    tagNames.add(t.trim().toLowerCase());
+                }
+            }
+        }
+
+        // Auto-extract AI tags from uploaded images via Google Vision / Lens AI
+        if (imageUrls != null && !imageUrls.isEmpty()) {
+            try {
+                Set<String> aiTags = imageTaggingService.extractTagsFromUrls(imageUrls);
+                tagNames.addAll(aiTags);
+            } catch (Exception e) {
+                log.warn("Fallo el etiquetado automatico de imagenes por IA: {}", e.getMessage());
+            }
+        }
+
+        for (String tagName : tagNames) {
+            Tag tag = tagRepository.findByTagName(tagName)
+                    .orElseGet(() -> tagRepository.save(Tag.builder().tagName(tagName).build()));
+            tags.add(tag);
+        }
+
+        return tags;
+    }
+
     @PostMapping("/products")
     public ResponseEntity<SellerProductSaveResult> createSellerProduct(
             @RequestHeader("Authorization") String authHeader,
@@ -329,18 +363,7 @@ public class SellerController {
         Store store = getAuthenticatedStore(authHeader);
 
         Category category = resolveCategory(payload.getCategoryId());
-
-        Set<Tag> tags = new HashSet<>();
-        if (payload.getTags() != null) {
-            for (String tagName : payload.getTags()) {
-                if (tagName != null && !tagName.trim().isEmpty()) {
-                    String cleanTag = tagName.trim();
-                    Tag tag = tagRepository.findByTagName(cleanTag)
-                            .orElseGet(() -> tagRepository.save(Tag.builder().tagName(cleanTag).build()));
-                    tags.add(tag);
-                }
-            }
-        }
+        Set<Tag> tags = resolveTags(payload.getTags(), payload.getImageUrls());
 
         Product product = Product.builder()
                 .name(payload.getName())
@@ -396,17 +419,7 @@ public class SellerController {
         }
 
         Category category = resolveCategory(payload.getCategoryId());
-
-        Set<Tag> tags = new HashSet<>();
-        if (payload.getTags() != null) {
-            for (String tagName : payload.getTags()) {
-                if (tagName != null && !tagName.trim().isEmpty()) {
-                    Tag tag = tagRepository.findByTagName(tagName.trim())
-                            .orElseGet(() -> tagRepository.save(Tag.builder().tagName(tagName.trim()).build()));
-                    tags.add(tag);
-                }
-            }
-        }
+        Set<Tag> tags = resolveTags(payload.getTags(), payload.getImageUrls());
 
         product.setName(payload.getName());
         product.setDescription(payload.getDescription());

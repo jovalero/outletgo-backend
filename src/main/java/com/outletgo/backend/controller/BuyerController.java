@@ -3,14 +3,17 @@ package com.outletgo.backend.controller;
 import com.outletgo.backend.config.JwtUtil;
 import com.outletgo.backend.entity.*;
 import com.outletgo.backend.repository.*;
+import com.outletgo.backend.service.ImageTaggingService;
 import io.jsonwebtoken.Claims;
 import lombok.*;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.*;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.beans.factory.annotation.Value;
@@ -30,6 +33,7 @@ import java.util.stream.Stream;
 @RequestMapping("/api/buyer")
 @CrossOrigin
 @Transactional
+@Slf4j
 public class BuyerController {
 
     @Value("${mercadopago.access-token:}")
@@ -100,6 +104,9 @@ public class BuyerController {
 
     @Autowired
     private BannerService bannerService;
+
+    @Autowired
+    private ImageTaggingService imageTaggingService;
 
     // Helper: Authenticated User from JWT
     private User getAuthenticatedUser(String authorizationHeader) {
@@ -172,8 +179,22 @@ public class BuyerController {
             stream = stream.filter(p -> p.getStore().getId().equals(storeId));
         }
         if (name != null && !name.trim().isEmpty()) {
-            String searchLower = name.trim().toLowerCase();
-            stream = stream.filter(p -> p.getName().toLowerCase().contains(searchLower));
+            String[] searchTerms = name.trim().toLowerCase().split("\\s+");
+            stream = stream.filter(p -> {
+                String pName = p.getName() != null ? p.getName().toLowerCase() : "";
+                String pDesc = p.getDescription() != null ? p.getDescription().toLowerCase() : "";
+                String pCat = p.getCategory() != null ? p.getCategory().getName().toLowerCase() : "";
+                List<String> pTags = p.getTags() != null
+                        ? p.getTags().stream().map(t -> t.getTagName().toLowerCase()).collect(Collectors.toList())
+                        : List.of();
+
+                return Arrays.stream(searchTerms).allMatch(term ->
+                        pName.contains(term) ||
+                        pDesc.contains(term) ||
+                        pCat.contains(term) ||
+                        pTags.stream().anyMatch(tag -> tag.contains(term))
+                );
+            });
         }
         if (minPrice != null) {
             stream = stream.filter(p -> p.getBasePrice() >= minPrice);
@@ -232,6 +253,63 @@ public class BuyerController {
 
         Pageable pageable = PageRequest.of(page, pageSize);
         return ResponseEntity.ok(new PageImpl<>(paginated, pageable, dtos.size()));
+    }
+
+    @PostMapping("/search/visual")
+    public ResponseEntity<LensSearchResultResponse> searchByImage(
+            @RequestParam("image") MultipartFile imageFile) {
+
+        Set<String> detectedTags = new LinkedHashSet<>();
+        if (imageFile != null && !imageFile.isEmpty()) {
+            try {
+                byte[] bytes = imageFile.getBytes();
+                detectedTags = imageTaggingService.extractTagsFromImageBytes(bytes, imageFile.getOriginalFilename());
+            } catch (Exception e) {
+                log.warn("Error al procesar archivo de imagen en busqueda visual: {}", e.getMessage());
+            }
+        }
+
+        List<Product> activeProducts = productRepository.findByIsactiveTrue();
+        Set<String> finalTags = detectedTags;
+
+        List<Product> matched = activeProducts.stream()
+                .filter(p -> {
+                    if (finalTags.isEmpty()) return true;
+                    String pName = p.getName() != null ? p.getName().toLowerCase() : "";
+                    String pDesc = p.getDescription() != null ? p.getDescription().toLowerCase() : "";
+                    String pCat = p.getCategory() != null ? p.getCategory().getName().toLowerCase() : "";
+                    List<String> pTags = p.getTags() != null
+                            ? p.getTags().stream().map(t -> t.getTagName().toLowerCase()).collect(Collectors.toList())
+                            : List.of();
+
+                    return finalTags.stream().anyMatch(tag ->
+                            pName.contains(tag) || pDesc.contains(tag) || pCat.contains(tag) || pTags.contains(tag)
+                    );
+                })
+                .collect(Collectors.toList());
+
+        List<CatalogProductDto> dtos = matched.stream()
+                .map(p -> {
+                    List<ProductImage> imgs = productImageRepository.findByProductId(p.getId());
+                    String thumb = imgs.isEmpty() ? null : imgs.get(0).getImageUrl();
+                    return CatalogProductDto.builder()
+                            .id(p.getId())
+                            .name(p.getName())
+                            .thumbnailUrl(thumb)
+                            .price(p.getBasePrice())
+                            .storeId(p.getStore().getId())
+                            .storeName(p.getStore().getBusinessName())
+                            .ratingAvg(p.getRatingAvg())
+                            .ratingCount(p.getRatingCount())
+                            .build();
+                })
+                .collect(Collectors.toList());
+
+        return ResponseEntity.ok(LensSearchResultResponse.builder()
+                .products(dtos)
+                .detectedTags(new ArrayList<>(detectedTags))
+                .hasMeaningfulResults(!dtos.isEmpty())
+                .build());
     }
 
     @GetMapping("/products/{productId}")
@@ -2338,5 +2416,15 @@ public class BuyerController {
         private Integer ratingCount;
         private String imageUrl;
         private String address;
+    }
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class LensSearchResultResponse {
+        private List<CatalogProductDto> products;
+        private List<String> detectedTags;
+        private boolean hasMeaningfulResults;
     }
 }
