@@ -81,6 +81,18 @@ public class Banner {
         return (products != null && org.hibernate.Hibernate.isInitialized(products)) ? products : new java.util.HashSet<>();
     }
 
+    @com.fasterxml.jackson.annotation.JsonProperty("targetStoreId")
+    public String getTargetStoreId() {
+        return (stores != null && org.hibernate.Hibernate.isInitialized(stores) && !stores.isEmpty()) 
+                ? stores.iterator().next().getId().toString() : null;
+    }
+
+    @com.fasterxml.jackson.annotation.JsonProperty("targetProductId")
+    public String getTargetProductId() {
+        return (products != null && org.hibernate.Hibernate.isInitialized(products) && !products.isEmpty()) 
+                ? products.iterator().next().getId().toString() : null;
+    }
+
     @PrePersist
     protected void onCreate() {
         if (id == null) {
