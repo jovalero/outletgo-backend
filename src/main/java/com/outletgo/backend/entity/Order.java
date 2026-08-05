@@ -52,6 +52,9 @@ public class Order {
     @Column(name = "mp_preference_id", length = 255)
     private String mpPreferenceId;
 
+    @Column(name = "mp_payment_id", length = 255)
+    private String mpPaymentId;
+
     @Column(name = "payment_status_detail", length = 100)
     private String paymentStatusDetail;
 

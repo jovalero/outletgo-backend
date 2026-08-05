@@ -15,6 +15,11 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
+import com.mercadopago.MercadoPagoConfig;
+import com.mercadopago.client.payment.PaymentRefundClient;
+import com.mercadopago.resources.payment.PaymentRefund;
+import org.springframework.beans.factory.annotation.Value;
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -22,7 +27,11 @@ import java.util.stream.Collectors;
 @RestController
 @CrossOrigin
 @Transactional
+@Slf4j
 public class AdminController {
+
+    @Value("${mercadopago.access-token:}")
+    private String mpAccessToken;
 
 
     @Autowired
@@ -1095,17 +1104,101 @@ public class AdminController {
         OrderStore slice = orderStoreRepository.findById(body.getSliceId())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Slice de orden no encontrado"));
 
+        Order order = slice.getOrder();
+        double amountToRefund = (body.getAmount() != null && body.getAmount() > 0) ? body.getAmount() : slice.getSubtotalAmount();
         String mpRefundId = "REF-" + UUID.randomUUID().toString();
+
+        if (mpAccessToken != null && !mpAccessToken.trim().isEmpty() &&
+            !mpAccessToken.contains("access_token") && !mpAccessToken.contains("placeholder") &&
+            order != null && order.getMpPaymentId() != null && !order.getMpPaymentId().isBlank()) {
+            try {
+                MercadoPagoConfig.setAccessToken(mpAccessToken.trim());
+                PaymentRefundClient refundClient = new PaymentRefundClient();
+                PaymentRefund refund = refundClient.refund(
+                        Long.parseLong(order.getMpPaymentId().trim()),
+                        BigDecimal.valueOf(amountToRefund)
+                );
+                if (refund != null && refund.getId() != null) {
+                    mpRefundId = refund.getId().toString();
+                }
+            } catch (Exception e) {
+                log.error("Error executing partial refund in Mercado Pago for slice {}: ", slice.getId(), e);
+            }
+        }
+
         slice.setMpRefundId(mpRefundId);
-        slice.setRefundAmount(body.getAmount());
+        slice.setRefundAmount(amountToRefund);
         slice.setStatus(Order.OrderStatus.CANCELLED);
         orderStoreRepository.save(slice);
+
+        // Reponer stock de los ítems de esta tienda
+        List<OrderItem> items = orderItemRepository.findByOrderStoreId(slice.getId());
+        for (OrderItem item : items) {
+            if (item.getVariation() != null) {
+                ProductVariation variation = item.getVariation();
+                variation.setStock(variation.getStock() + item.getQuantity());
+                productVariationRepository.save(variation);
+            }
+        }
 
         return ResponseEntity.ok(RefundResponse.builder()
                 .success(true)
                 .mpRefundId(mpRefundId)
-                .refundedAmount(body.getAmount())
-                .message("Reembolso procesado correctamente en Mercado Pago")
+                .refundedAmount(amountToRefund)
+                .message("Reembolso de tienda procesado correctamente con Mercado Pago")
+                .build());
+    }
+
+    @PostMapping("/api/admin/orders/{id}/refund-total")
+    public ResponseEntity<RefundResponse> refundTotalOrder(
+            @PathVariable UUID id,
+            @RequestBody(required = false) Map<String, String> body) {
+        Order order = orderRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Orden no encontrada"));
+
+        String mpRefundId = "REF-FULL-" + UUID.randomUUID().toString();
+        double totalRefunded = order.getTotalAmount() != null ? order.getTotalAmount() : 0.0;
+
+        if (mpAccessToken != null && !mpAccessToken.trim().isEmpty() &&
+            !mpAccessToken.contains("access_token") && !mpAccessToken.contains("placeholder") &&
+            order.getMpPaymentId() != null && !order.getMpPaymentId().isBlank()) {
+            try {
+                MercadoPagoConfig.setAccessToken(mpAccessToken.trim());
+                PaymentRefundClient refundClient = new PaymentRefundClient();
+                PaymentRefund refund = refundClient.refund(Long.parseLong(order.getMpPaymentId().trim()));
+                if (refund != null && refund.getId() != null) {
+                    mpRefundId = refund.getId().toString();
+                }
+            } catch (Exception e) {
+                log.error("Error executing total order refund in Mercado Pago for order {}: ", id, e);
+            }
+        }
+
+        order.setStatus(Order.OrderStatus.CANCELLED);
+        orderRepository.save(order);
+
+        List<OrderStore> slices = orderStoreRepository.findByOrderId(id);
+        for (OrderStore slice : slices) {
+            slice.setStatus(Order.OrderStatus.CANCELLED);
+            slice.setMpRefundId(mpRefundId);
+            slice.setRefundAmount(slice.getSubtotalAmount());
+            orderStoreRepository.save(slice);
+
+            List<OrderItem> items = orderItemRepository.findByOrderStoreId(slice.getId());
+            for (OrderItem item : items) {
+                if (item.getVariation() != null) {
+                    ProductVariation variation = item.getVariation();
+                    variation.setStock(variation.getStock() + item.getQuantity());
+                    productVariationRepository.save(variation);
+                }
+            }
+        }
+
+        return ResponseEntity.ok(RefundResponse.builder()
+                .success(true)
+                .mpRefundId(mpRefundId)
+                .refundedAmount(totalRefunded)
+                .message("Reembolso total de la orden procesado correctamente con Mercado Pago")
                 .build());
     }
 
@@ -1177,6 +1270,7 @@ public class AdminController {
                 .serviceFee(o.getServiceFee() != null ? o.getServiceFee() : 0.0)
                 .totalArs(o.getTotalAmount())
                 .mpPreferenceId(o.getMpPreferenceId())
+                .mpPaymentId(o.getMpPaymentId())
                 .buyer(new AdminOrderResponse.BuyerDto(
                         o.getClient().getId(),
                         o.getClient().getEmail().split("@")[0],
@@ -1717,6 +1811,7 @@ public class AdminController {
         private Double serviceFee;
         private Double totalArs;
         private String mpPreferenceId;
+        private String mpPaymentId;
         private BuyerDto buyer;
         private List<AdminOrderStoreDto> stores;
 

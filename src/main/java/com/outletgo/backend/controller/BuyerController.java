@@ -795,7 +795,10 @@ public class BuyerController {
     public ResponseEntity<?> updatePaymentStatus(
             @RequestHeader("Authorization") String authHeader,
             @PathVariable UUID orderId,
-            @RequestParam("status") String status) {
+            @RequestParam("status") String status,
+            @RequestParam(value = "paymentId", required = false) String paymentId,
+            @RequestParam(value = "payment_id", required = false) String paymentIdAlt,
+            @RequestParam(value = "collection_id", required = false) String collectionId) {
 
         User user = getAuthenticatedUser(authHeader);
         if (user == null) {
@@ -807,6 +810,13 @@ public class BuyerController {
 
         if (!order.getClient().getId().equals(user.getId())) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "No tienes permiso para este pedido");
+        }
+
+        String resolvedPaymentId = paymentId != null && !paymentId.isBlank() ? paymentId :
+                (paymentIdAlt != null && !paymentIdAlt.isBlank() ? paymentIdAlt : collectionId);
+
+        if (resolvedPaymentId != null && !resolvedPaymentId.isBlank()) {
+            order.setMpPaymentId(resolvedPaymentId.trim());
         }
 
         if ("approved".equalsIgnoreCase(status)) {
