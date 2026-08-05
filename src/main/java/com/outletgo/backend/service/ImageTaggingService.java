@@ -166,11 +166,39 @@ public class ImageTaggingService {
 
         String apiKey = getResolvedApiKey();
         if (apiKey != null) {
+            log.info("[IMAGE TAGGING] Procesando imagen por URL para Google Vision: {}", url);
             try {
-                tags.addAll(callGoogleVisionApiUrl(url, apiKey));
+                if (url.startsWith("http://") || url.startsWith("https://")) {
+                    try {
+                        HttpRequest request = HttpRequest.newBuilder()
+                                .uri(URI.create(url))
+                                .GET()
+                                .timeout(Duration.ofSeconds(5))
+                                .build();
+                        HttpResponse<byte[]> response = httpClient.send(request, HttpResponse.BodyHandlers.ofByteArray());
+                        if (response.statusCode() == 200 && response.body() != null && response.body().length > 0) {
+                            String base64Image = Base64.getEncoder().encodeToString(response.body());
+                            Set<String> visionTags = callGoogleVisionApiBase64(base64Image, apiKey);
+                            log.info("[IMAGE TAGGING] Google Vision detectó etiquetas desde los bytes de la URL: {}", visionTags);
+                            tags.addAll(visionTags);
+                        } else {
+                            tags.addAll(callGoogleVisionApiUrl(url, apiKey));
+                        }
+                    } catch (Exception ex) {
+                        log.warn("[IMAGE TAGGING] Error descargando bytes de la URL, intentando imageUri directo: {}", ex.getMessage());
+                        tags.addAll(callGoogleVisionApiUrl(url, apiKey));
+                    }
+                } else if (url.startsWith("data:image")) {
+                    String base64Data = url.substring(url.indexOf(",") + 1);
+                    tags.addAll(callGoogleVisionApiBase64(base64Data, apiKey));
+                } else {
+                    tags.addAll(callGoogleVisionApiUrl(url, apiKey));
+                }
             } catch (Exception e) {
                 log.warn("Error consultando Google Vision API para URL {}: {}", url, e.getMessage());
             }
+        } else {
+            log.warn("[IMAGE TAGGING] No se encontró GOOGLE_VISION_API_KEY en variables de entorno de Render/servidor.");
         }
 
         // Fallback o extraccion complementaria basada en el nombre de la imagen / URL
