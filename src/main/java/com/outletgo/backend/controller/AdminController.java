@@ -260,8 +260,8 @@ public class AdminController {
                 ? p.getStore().getUser().getCreatedAt().toString()
                 : LocalDateTime.now().toString();
 
-        Double avgRating = reviewRepository.getAverageRatingForProduct(p.getId());
-        Long countRating = reviewRepository.countReviewsForProduct(p.getId());
+        Double avgRating = p.getRatingAvg() != null ? Math.round(p.getRatingAvg() * 10.0) / 10.0 : 0.0;
+        Integer countRating = p.getRatingCount() != null ? p.getRatingCount() : 0;
 
         return AdminProductResponse.builder()
                 .id(p.getId())
@@ -274,8 +274,8 @@ public class AdminController {
                 .images(imageDtos)
                 .variations(variationDtos)
                 .tags(tagDtos)
-                .ratingAvg(avgRating != null ? Math.round(avgRating * 10.0) / 10.0 : null)
-                .ratingCount(countRating != null ? countRating.intValue() : 0)
+                .ratingAvg(avgRating)
+                .ratingCount(countRating)
                 .createdAt(createdAtStr)
                 .moderationHistory(historyDtos)
                 .build();
@@ -711,8 +711,8 @@ public class AdminController {
             }
         }
 
-        Double avgRating = reviewRepository.getAverageRatingForStore(s.getId());
-        Long countRating = reviewRepository.countReviewsForStore(s.getId());
+        Double avgRating = s.getRatingAvg() != null ? Math.round(s.getRatingAvg() * 10.0) / 10.0 : 0.0;
+        Integer countRating = s.getRatingCount() != null ? s.getRatingCount() : 0;
 
         return SellerAccountResponse.builder()
                 .id(u.getId())
@@ -727,8 +727,8 @@ public class AdminController {
                         .description(s.getDescription())
                         .headerImageUrl(s.getHeaderImage())
                         .logoUrl(s.getHeaderImage())
-                        .ratingAvg(avgRating != null ? Math.round(avgRating * 10.0) / 10.0 : null)
-                        .ratingCount(countRating != null ? countRating.intValue() : 0)
+                        .ratingAvg(avgRating)
+                        .ratingCount(countRating)
                         .latitude(latitude)
                         .longitude(longitude)
                         .build())

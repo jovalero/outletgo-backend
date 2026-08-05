@@ -154,19 +154,32 @@ public class StoreDataSeeder implements CommandLineRunner {
 
                     // Añadir de 1 a 5 reseñas aleatorias para el producto y la tienda
                     int numReviews = 1 + random.nextInt(5);
+                    double totalRating = 0;
                     for (int r = 0; r < numReviews; r++) {
+                        int ratingVal = 3 + random.nextInt(3); // 3 a 5 estrellas
+                        totalRating += ratingVal;
                         Review rev = Review.builder()
                             .product(product)
                             .store(store)
                             .user(reviewer)
-                            .rating(3 + random.nextInt(3)) // 3 a 5 estrellas
+                            .rating(ratingVal)
                             .comment("Muy buen producto, altamente recomendado!")
                             .isVisible(true)
                             .createdAt(LocalDateTime.now().minusDays(random.nextInt(30)))
                             .build();
                         reviewRepository.save(rev);
                     }
+                    product.setRatingAvg(Math.round((totalRating / numReviews) * 10.0) / 10.0);
+                    product.setRatingCount(numReviews);
+                    productRepository.save(product);
                 }
+
+                // Calcular promedio tienda
+                Double storeAvg = reviewRepository.getAverageRatingForStore(store.getId());
+                Long storeCount = reviewRepository.countReviewsForStore(store.getId());
+                if (storeAvg != null) store.setRatingAvg(Math.round(storeAvg * 10.0) / 10.0);
+                if (storeCount != null) store.setRatingCount(storeCount.intValue());
+                storeRepository.save(store);
             }
         }
         

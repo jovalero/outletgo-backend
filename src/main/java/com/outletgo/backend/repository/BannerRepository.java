@@ -16,7 +16,7 @@ import java.util.UUID;
 public interface BannerRepository extends JpaRepository<Banner, UUID> {
     Page<Banner> findAll(Pageable pageable);
 
-    @Query(value = "SELECT DISTINCT b FROM Banner b LEFT JOIN FETCH b.stores LEFT JOIN FETCH b.products",
+    @Query(value = "SELECT b FROM Banner b ORDER BY b.createdAt DESC",
            countQuery = "SELECT COUNT(b) FROM Banner b")
     Page<Banner> findAllWithRelations(Pageable pageable);
 

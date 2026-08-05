@@ -50,6 +50,7 @@ public class AdminBannerController {
     }
 
     @PostMapping
+    @Transactional
     public ResponseEntity<?> createBanner(@RequestBody CreateBannerRequest req) {
         log.info("=== CREATE BANNER REQUEST ===");
         log.info("title: {}", req.getTitle());
@@ -94,6 +95,7 @@ public class AdminBannerController {
     }
 
     @GetMapping("/{id}")
+    @Transactional(readOnly = true)
     public ResponseEntity<?> getBannerById(@PathVariable String id) {
         try {
             UUID uuid = UUID.fromString(id);
@@ -107,6 +109,7 @@ public class AdminBannerController {
     }
 
     @PutMapping("/{id}")
+    @Transactional
     public ResponseEntity<?> updateBanner(@PathVariable String id, @RequestBody CreateBannerRequest req) {
         try {
             UUID uuid = UUID.fromString(id);
