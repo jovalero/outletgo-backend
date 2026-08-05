@@ -39,10 +39,10 @@ public class UploadController {
         }
     }
 
-    @PostMapping("/product-image")
-    public ResponseEntity<Map<String, String>> uploadProductImage(
+    @PostMapping("/{bucketName}")
+    public ResponseEntity<Map<String, String>> uploadImage(
+            @PathVariable("bucketName") String bucketName,
             @RequestParam("file") MultipartFile file,
-            @RequestParam(value = "stagingSessionId", required = false) String stagingSessionId,
             HttpServletRequest request) {
 
         if (file.isEmpty()) {
@@ -68,10 +68,12 @@ public class UploadController {
             // 1. Try to upload to Supabase Storage persistently
             try {
                 String token = jwtUtil.generateServiceRoleToken();
-                fileUrl = uploadToSupabase(uniqueName, fileBytes, contentType, token);
+                // If bucketName is chat-image, we map it to chat-images in supabase, or we just try uploading to product-images as fallback
+                String targetBucket = bucketName.equals("product-image") ? "product-images" : bucketName;
+                fileUrl = uploadToSupabase(targetBucket, uniqueName, fileBytes, contentType, token);
                 System.out.println("Persistent upload succeeded: " + fileUrl);
             } catch (Exception e) {
-                System.err.println("WARNING: Persistent Supabase upload failed, falling back to local storage. Error: " + e.getMessage());
+                System.err.println("WARNING: Persistent Supabase upload failed for bucket " + bucketName + ", falling back to local storage. Error: " + e.getMessage());
             }
 
             // 2. Fallback to local ephemeral storage if Supabase failed or was skipped
@@ -95,8 +97,8 @@ public class UploadController {
         }
     }
 
-    private String uploadToSupabase(String fileName, byte[] bytes, String contentType, String token) throws Exception {
-        String url = "https://mlsqofdvdjcpjdasrgdk.supabase.co/storage/v1/object/product-images/" + fileName;
+    private String uploadToSupabase(String bucketName, String fileName, byte[] bytes, String contentType, String token) throws Exception {
+        String url = "https://mlsqofdvdjcpjdasrgdk.supabase.co/storage/v1/object/" + bucketName + "/" + fileName;
         
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create(url))
@@ -109,7 +111,7 @@ public class UploadController {
         HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
         
         if (response.statusCode() == 200 || response.statusCode() == 201) {
-            return "https://mlsqofdvdjcpjdasrgdk.supabase.co/storage/v1/object/public/product-images/" + fileName;
+            return "https://mlsqofdvdjcpjdasrgdk.supabase.co/storage/v1/object/public/" + bucketName + "/" + fileName;
         } else {
             throw new RuntimeException("Supabase upload failed with status " + response.statusCode() + ": " + response.body());
         }
