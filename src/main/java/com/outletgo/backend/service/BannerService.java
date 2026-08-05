@@ -69,8 +69,11 @@ public class BannerService {
 
     public List<Banner> getActiveBanners() {
         LocalDateTime now = LocalDateTime.now();
-        return bannerRepository.findByStatusAndStartDateLessThanEqualAndEndDateGreaterThanEqualOrderByCreatedAtDesc(
-                "ACTIVE", now, now);
+        List<Banner> banners = bannerRepository.findActiveBanners(now);
+        if (banners == null || banners.isEmpty()) {
+            banners = bannerRepository.findByStatusOrderByCreatedAtDesc("ACTIVE");
+        }
+        return banners;
     }
 
     public Optional<Banner> getBannerById(UUID id) {

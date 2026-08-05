@@ -18,9 +18,12 @@ import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+import org.springframework.transaction.annotation.Transactional;
+
 @RestController
 @RequestMapping({"/api/banners", "/banners"})
 @CrossOrigin(origins = "*")
+@Transactional(readOnly = true)
 public class BannerController {
 
     @Autowired

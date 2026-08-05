@@ -11,9 +11,15 @@ import java.util.UUID;
 import java.util.List;
 import java.time.LocalDateTime;
 
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+
 @Repository
 public interface BannerRepository extends JpaRepository<Banner, UUID> {
     Page<Banner> findAll(Pageable pageable);
-    List<Banner> findByStatusAndStartDateLessThanEqualAndEndDateGreaterThanEqualOrderByCreatedAtDesc(
-            String status, LocalDateTime nowStart, LocalDateTime nowEnd);
+
+    @Query("SELECT b FROM Banner b WHERE b.status = 'ACTIVE' AND (b.startDate IS NULL OR b.startDate <= :now) AND (b.endDate IS NULL OR b.endDate >= :now) ORDER BY b.createdAt DESC")
+    List<Banner> findActiveBanners(@Param("now") LocalDateTime now);
+
+    List<Banner> findByStatusOrderByCreatedAtDesc(String status);
 }
