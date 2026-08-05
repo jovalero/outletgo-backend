@@ -23,7 +23,7 @@ public class BannerService {
     @Transactional(readOnly = true)
     public Page<Banner> getBanners(int page, int size) {
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
-        return bannerRepository.findAll(pageable);
+        return bannerRepository.findAllWithRelations(pageable);
     }
 
     @Transactional

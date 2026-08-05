@@ -15,8 +15,11 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 @Repository
-public interface BannerRepository extends JpaRepository<Banner, UUID> {
     Page<Banner> findAll(Pageable pageable);
+
+    @Query(value = "SELECT DISTINCT b FROM Banner b LEFT JOIN FETCH b.stores LEFT JOIN FETCH b.products",
+           countQuery = "SELECT COUNT(b) FROM Banner b")
+    Page<Banner> findAllWithRelations(Pageable pageable);
 
     @Query("SELECT DISTINCT b FROM Banner b LEFT JOIN FETCH b.stores LEFT JOIN FETCH b.products WHERE b.status = 'ACTIVE' AND (b.startDate IS NULL OR b.startDate <= :now) AND (b.endDate IS NULL OR b.endDate >= :now) ORDER BY b.createdAt DESC")
     List<Banner> findActiveBanners(@Param("now") LocalDateTime now);
