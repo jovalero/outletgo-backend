@@ -33,8 +33,42 @@ public class BannerController {
     private ProductImageRepository productImageRepository;
 
     @GetMapping({"", "/", "/active"})
-    public ResponseEntity<List<Banner>> getActiveBanners() {
-        return ResponseEntity.ok(bannerService.getActiveBanners());
+    public ResponseEntity<?> getActiveBanners() {
+        List<Banner> banners = bannerService.getActiveBanners();
+        List<BannerResponseDto> dtos = banners.stream()
+                .map(this::mapToBannerResponseDto)
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(dtos);
+    }
+
+    private BannerResponseDto mapToBannerResponseDto(Banner b) {
+        List<String> storeIds = new ArrayList<>();
+        List<String> productIds = new ArrayList<>();
+        if (b.getStores() != null) {
+            for (Store s : b.getStores()) {
+                if (s != null && s.getId() != null) storeIds.add(s.getId().toString());
+            }
+        }
+        if (b.getProducts() != null) {
+            for (Product p : b.getProducts()) {
+                if (p != null && p.getId() != null) productIds.add(p.getId().toString());
+            }
+        }
+
+        return BannerResponseDto.builder()
+                .id(b.getId())
+                .title(b.getTitle())
+                .description(b.getDescription())
+                .imageUrl(b.getImageUrl())
+                .type(b.getType())
+                .status(b.getStatus())
+                .badgeText(b.getBadgeText())
+                .startDate(b.getStartDate())
+                .endDate(b.getEndDate())
+                .createdAt(b.getCreatedAt())
+                .storeIds(storeIds)
+                .productIds(productIds)
+                .build();
     }
 
     @GetMapping("/{id}/details")
@@ -83,6 +117,27 @@ public class BannerController {
                 .build();
 
         return ResponseEntity.ok(details);
+    }
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class BannerResponseDto {
+        private UUID id;
+        private String title;
+        private String description;
+        private String imageUrl;
+        private String type;
+        private String status;
+        private String badgeText;
+        private java.time.LocalDateTime startDate;
+        private java.time.LocalDateTime endDate;
+        private java.time.LocalDateTime createdAt;
+        @Builder.Default
+        private List<String> storeIds = new ArrayList<>();
+        @Builder.Default
+        private List<String> productIds = new ArrayList<>();
     }
 
     @Data
