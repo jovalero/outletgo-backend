@@ -260,6 +260,9 @@ public class AdminController {
                 ? p.getStore().getUser().getCreatedAt().toString()
                 : LocalDateTime.now().toString();
 
+        Double avgRating = reviewRepository.getAverageRatingForProduct(p.getId());
+        Long countRating = reviewRepository.countReviewsForProduct(p.getId());
+
         return AdminProductResponse.builder()
                 .id(p.getId())
                 .name(p.getName())
@@ -271,8 +274,8 @@ public class AdminController {
                 .images(imageDtos)
                 .variations(variationDtos)
                 .tags(tagDtos)
-                .ratingAvg(p.getRatingAvg())
-                .ratingCount(p.getRatingCount())
+                .ratingAvg(avgRating != null ? Math.round(avgRating * 10.0) / 10.0 : null)
+                .ratingCount(countRating != null ? countRating.intValue() : 0)
                 .createdAt(createdAtStr)
                 .moderationHistory(historyDtos)
                 .build();
@@ -708,6 +711,9 @@ public class AdminController {
             }
         }
 
+        Double avgRating = reviewRepository.getAverageRatingForStore(s.getId());
+        Long countRating = reviewRepository.countReviewsForStore(s.getId());
+
         return SellerAccountResponse.builder()
                 .id(u.getId())
                 .email(u.getEmail())
@@ -721,8 +727,8 @@ public class AdminController {
                         .description(s.getDescription())
                         .headerImageUrl(s.getHeaderImage())
                         .logoUrl(s.getHeaderImage())
-                        .ratingAvg(s.getRatingAvg())
-                        .ratingCount(s.getRatingCount())
+                        .ratingAvg(avgRating != null ? Math.round(avgRating * 10.0) / 10.0 : null)
+                        .ratingCount(countRating != null ? countRating.intValue() : 0)
                         .latitude(latitude)
                         .longitude(longitude)
                         .build())
