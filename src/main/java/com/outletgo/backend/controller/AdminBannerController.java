@@ -31,6 +31,7 @@ public class AdminBannerController {
     private final ProductRepository productRepository;
 
     @GetMapping({"", "/"})
+    @Transactional(readOnly = true)
     public ResponseEntity<?> getBanners(
             @RequestParam(value = "page", defaultValue = "0") int page,
             @RequestParam(value = "size", defaultValue = "10") int size) {
@@ -197,27 +198,41 @@ public class AdminBannerController {
     }
 
     private AdminBannerResponse mapToAdminBannerResponse(Banner b) {
-        List<Map<String, Object>> storeList = b.getStores().stream()
-                .map(s -> Map.of(
-                        "id", (Object) s.getId().toString(),
-                        "businessName", (Object) (s.getBusinessName() != null ? s.getBusinessName() : "")
-                ))
-                .collect(Collectors.toList());
+        List<Map<String, Object>> storeList = new ArrayList<>();
+        List<String> storeIds = new ArrayList<>();
+        try {
+            if (b.getStores() != null) {
+                for (Store s : b.getStores()) {
+                    if (s != null && s.getId() != null) {
+                        storeIds.add(s.getId().toString());
+                        Map<String, Object> map = new HashMap<>();
+                        map.put("id", s.getId().toString());
+                        map.put("businessName", s.getBusinessName() != null ? s.getBusinessName() : "");
+                        storeList.add(map);
+                    }
+                }
+            }
+        } catch (Exception e) {
+            log.warn("Could not lazy load stores for banner id {}: {}", b.getId(), e.getMessage());
+        }
 
-        List<Map<String, Object>> productList = b.getProducts().stream()
-                .map(p -> Map.of(
-                        "id", (Object) p.getId().toString(),
-                        "name", (Object) (p.getName() != null ? p.getName() : "")
-                ))
-                .collect(Collectors.toList());
-
-        List<String> storeIds = b.getStores().stream()
-                .map(s -> s.getId().toString())
-                .collect(Collectors.toList());
-
-        List<String> productIds = b.getProducts().stream()
-                .map(p -> p.getId().toString())
-                .collect(Collectors.toList());
+        List<Map<String, Object>> productList = new ArrayList<>();
+        List<String> productIds = new ArrayList<>();
+        try {
+            if (b.getProducts() != null) {
+                for (Product p : b.getProducts()) {
+                    if (p != null && p.getId() != null) {
+                        productIds.add(p.getId().toString());
+                        Map<String, Object> map = new HashMap<>();
+                        map.put("id", p.getId().toString());
+                        map.put("name", p.getName() != null ? p.getName() : "");
+                        productList.add(map);
+                    }
+                }
+            }
+        } catch (Exception e) {
+            log.warn("Could not lazy load products for banner id {}: {}", b.getId(), e.getMessage());
+        }
 
         return AdminBannerResponse.builder()
                 .id(b.getId())
