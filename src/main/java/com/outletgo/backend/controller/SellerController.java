@@ -355,6 +355,21 @@ public class SellerController {
         return tags;
     }
 
+    private Set<Tag> resolveManualTagsOnly(List<String> manualTags) {
+        Set<Tag> tags = new HashSet<>();
+        if (manualTags != null) {
+            for (String t : manualTags) {
+                if (t != null && !t.trim().isEmpty()) {
+                    String cleanTag = t.trim().toLowerCase();
+                    Tag tag = tagRepository.findByTagName(cleanTag)
+                            .orElseGet(() -> tagRepository.save(Tag.builder().tagName(cleanTag).build()));
+                    tags.add(tag);
+                }
+            }
+        }
+        return tags;
+    }
+
     @PostMapping("/products")
     public ResponseEntity<SellerProductSaveResult> createSellerProduct(
             @RequestHeader("Authorization") String authHeader,
@@ -419,7 +434,19 @@ public class SellerController {
         }
 
         Category category = resolveCategory(payload.getCategoryId());
-        Set<Tag> tags = resolveTags(payload.getTags(), payload.getImageUrls());
+
+        // Obtener URLs de imagenes existentes para comparar si cambiaron
+        List<String> existingImageUrls = productImageRepository.findByProductId(product.getId()).stream()
+                .map(ProductImage::getImageUrl)
+                .collect(Collectors.toList());
+
+        List<String> newImageUrls = payload.getImageUrls() != null ? payload.getImageUrls() : List.of();
+        boolean imagesChanged = !new HashSet<>(newImageUrls).equals(new HashSet<>(existingImageUrls));
+
+        // Si las imagenes cambiaron, re-analizamos con IA. Si no cambiaron, respetamos la modificacion manual de tags del vendedor.
+        Set<Tag> tags = imagesChanged
+                ? resolveTags(payload.getTags(), newImageUrls)
+                : resolveManualTagsOnly(payload.getTags());
 
         product.setName(payload.getName());
         product.setDescription(payload.getDescription());
