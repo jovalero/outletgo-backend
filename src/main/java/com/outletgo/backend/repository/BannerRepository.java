@@ -4,17 +4,16 @@ import com.outletgo.backend.entity.Banner;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.stereotype.Repository;
-
-import java.util.UUID;
-
-import java.util.List;
-import java.time.LocalDateTime;
-
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.stereotype.Repository;
+
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.UUID;
 
 @Repository
+public interface BannerRepository extends JpaRepository<Banner, UUID> {
     Page<Banner> findAll(Pageable pageable);
 
     @Query(value = "SELECT DISTINCT b FROM Banner b LEFT JOIN FETCH b.stores LEFT JOIN FETCH b.products",
