@@ -68,6 +68,7 @@ public class BannerService {
         }
     }
 
+    @Transactional(readOnly = true)
     public List<Banner> getActiveBanners() {
         LocalDateTime now = LocalDateTime.now();
         List<Banner> banners = bannerRepository.findActiveBanners(now);

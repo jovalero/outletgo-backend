@@ -76,24 +76,42 @@ public class Banner {
 
     @com.fasterxml.jackson.annotation.JsonProperty("stores")
     public Set<Store> getStores() {
-        return (stores != null && org.hibernate.Hibernate.isInitialized(stores)) ? stores : new java.util.HashSet<>();
+        if (stores == null) return new java.util.HashSet<>();
+        try {
+            return stores;
+        } catch (Exception e) {
+            return new java.util.HashSet<>();
+        }
     }
 
     @com.fasterxml.jackson.annotation.JsonProperty("products")
     public Set<Product> getProducts() {
-        return (products != null && org.hibernate.Hibernate.isInitialized(products)) ? products : new java.util.HashSet<>();
+        if (products == null) return new java.util.HashSet<>();
+        try {
+            return products;
+        } catch (Exception e) {
+            return new java.util.HashSet<>();
+        }
     }
 
     @com.fasterxml.jackson.annotation.JsonProperty("targetStoreId")
     public String getTargetStoreId() {
-        return (stores != null && org.hibernate.Hibernate.isInitialized(stores) && !stores.isEmpty()) 
-                ? stores.iterator().next().getId().toString() : null;
+        try {
+            return (stores != null && !stores.isEmpty()) 
+                    ? stores.iterator().next().getId().toString() : null;
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     @com.fasterxml.jackson.annotation.JsonProperty("targetProductId")
     public String getTargetProductId() {
-        return (products != null && org.hibernate.Hibernate.isInitialized(products) && !products.isEmpty()) 
-                ? products.iterator().next().getId().toString() : null;
+        try {
+            return (products != null && !products.isEmpty()) 
+                    ? products.iterator().next().getId().toString() : null;
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     @PrePersist

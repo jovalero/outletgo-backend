@@ -18,8 +18,9 @@ import org.springframework.data.repository.query.Param;
 public interface BannerRepository extends JpaRepository<Banner, UUID> {
     Page<Banner> findAll(Pageable pageable);
 
-    @Query("SELECT b FROM Banner b WHERE b.status = 'ACTIVE' AND (b.startDate IS NULL OR b.startDate <= :now) AND (b.endDate IS NULL OR b.endDate >= :now) ORDER BY b.createdAt DESC")
+    @Query("SELECT DISTINCT b FROM Banner b LEFT JOIN FETCH b.stores LEFT JOIN FETCH b.products WHERE b.status = 'ACTIVE' AND (b.startDate IS NULL OR b.startDate <= :now) AND (b.endDate IS NULL OR b.endDate >= :now) ORDER BY b.createdAt DESC")
     List<Banner> findActiveBanners(@Param("now") LocalDateTime now);
 
-    List<Banner> findByStatusOrderByCreatedAtDesc(String status);
+    @Query("SELECT DISTINCT b FROM Banner b LEFT JOIN FETCH b.stores LEFT JOIN FETCH b.products WHERE b.status = :status ORDER BY b.createdAt DESC")
+    List<Banner> findByStatusOrderByCreatedAtDesc(@Param("status") String status);
 }
