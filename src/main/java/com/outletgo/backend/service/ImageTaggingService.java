@@ -164,18 +164,25 @@ public class ImageTaggingService {
     }
 
     private Set<String> callGoogleVisionApiUrl(String imageUrl, String apiKey) throws Exception {
-        String jsonPayload = String.format(
-                "{\"requests\":[{\"image\":{\"source\":{\"imageUri\":\"%s\"}},\"features\":[{\"type\":\"LABEL_DETECTION\",\"maxResults\":8},{\"type\":\"OBJECT_LOCALIZATION\",\"maxResults\":5}]}]}",
-                imageUrl
-        );
+        Map<String, Object> imageMap = Map.of("source", Map.of("imageUri", imageUrl));
+        Map<String, Object> featureLabel = Map.of("type", "LABEL_DETECTION", "maxResults", 8);
+        Map<String, Object> featureObject = Map.of("type", "OBJECT_LOCALIZATION", "maxResults", 5);
+        Map<String, Object> requestMap = Map.of("image", imageMap, "features", List.of(featureLabel, featureObject));
+        Map<String, Object> payloadMap = Map.of("requests", List.of(requestMap));
+
+        String jsonPayload = objectMapper.writeValueAsString(payloadMap);
         return executeVisionRequest(jsonPayload, apiKey);
     }
 
     private Set<String> callGoogleVisionApiBase64(String base64Content, String apiKey) throws Exception {
-        String jsonPayload = String.format(
-                "{\"requests\":[{\"image\":{\"content\":\"%s\"}},\"features\":[{\"type\":\"LABEL_DETECTION\",\"maxResults\":8},{\"type\":\"OBJECT_LOCALIZATION\",\"maxResults\":5}]}]}",
-                base64Content
-        );
+        String cleanBase64 = base64Content != null ? base64Content.replaceAll("\\s+", "") : "";
+        Map<String, Object> imageMap = Map.of("content", cleanBase64);
+        Map<String, Object> featureLabel = Map.of("type", "LABEL_DETECTION", "maxResults", 8);
+        Map<String, Object> featureObject = Map.of("type", "OBJECT_LOCALIZATION", "maxResults", 5);
+        Map<String, Object> requestMap = Map.of("image", imageMap, "features", List.of(featureLabel, featureObject));
+        Map<String, Object> payloadMap = Map.of("requests", List.of(requestMap));
+
+        String jsonPayload = objectMapper.writeValueAsString(payloadMap);
         return executeVisionRequest(jsonPayload, apiKey);
     }
 
