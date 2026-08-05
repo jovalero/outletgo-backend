@@ -56,6 +56,8 @@ public class BannerService {
             if (newBannerData.getEndDate() != null) banner.setEndDate(newBannerData.getEndDate());
             if (newBannerData.getStatus() != null) banner.setStatus(newBannerData.getStatus());
             if (newBannerData.getBadgeText() != null) banner.setBadgeText(newBannerData.getBadgeText());
+            if (newBannerData.getStores() != null) banner.setStores(newBannerData.getStores());
+            if (newBannerData.getProducts() != null) banner.setProducts(newBannerData.getProducts());
             return bannerRepository.save(banner);
         }
         return null;

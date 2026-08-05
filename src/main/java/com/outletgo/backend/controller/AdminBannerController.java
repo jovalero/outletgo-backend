@@ -1,6 +1,10 @@
 package com.outletgo.backend.controller;
 
 import com.outletgo.backend.entity.Banner;
+import com.outletgo.backend.entity.Product;
+import com.outletgo.backend.entity.Store;
+import com.outletgo.backend.repository.ProductRepository;
+import com.outletgo.backend.repository.StoreRepository;
 import com.outletgo.backend.service.BannerService;
 import lombok.*;
 import lombok.extern.slf4j.Slf4j;
@@ -12,10 +16,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @RestController
@@ -26,6 +27,8 @@ import java.util.stream.Collectors;
 public class AdminBannerController {
 
     private final BannerService bannerService;
+    private final StoreRepository storeRepository;
+    private final ProductRepository productRepository;
 
     @GetMapping({"", "/"})
     public ResponseEntity<?> getBanners(
@@ -48,12 +51,7 @@ public class AdminBannerController {
     public ResponseEntity<?> createBanner(@RequestBody CreateBannerRequest req) {
         log.info("=== CREATE BANNER REQUEST ===");
         log.info("title: {}", req.getTitle());
-        log.info("description: {}", req.getDescription());
-        log.info("imageUrl length: {}", req.getImageUrl() != null ? req.getImageUrl().length() : "NULL");
-        log.info("imageUrl starts with: {}", req.getImageUrl() != null && req.getImageUrl().length() > 50 ? req.getImageUrl().substring(0, 50) : req.getImageUrl());
         log.info("type: {}", req.getType());
-        log.info("startDate: {}", req.getStartDate());
-        log.info("endDate: {}", req.getEndDate());
         log.info("storeIds: {}", req.getStoreIds());
         log.info("productIds: {}", req.getProductIds());
         log.info("============================");
@@ -66,28 +64,30 @@ public class AdminBannerController {
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Error: el campo 'imageUrl' es requerido.");
             }
 
+            String bannerType = req.getType() != null ? req.getType().trim().toUpperCase() : "CAMPAIGN";
+
+            Set<Store> stores = resolveStores(bannerType, req.getStoreIds());
+            Set<Product> products = resolveProducts(bannerType, req.getProductIds());
+
             Banner banner = Banner.builder()
                     .title(req.getTitle())
                     .description(req.getDescription())
                     .imageUrl(req.getImageUrl())
-                    .type(req.getType() != null ? req.getType() : "CAMPAIGN")
+                    .type(bannerType)
                     .status("ACTIVE")
                     .startDate(req.getStartDate())
                     .endDate(req.getEndDate())
                     .badgeText(req.getBadgeText())
+                    .stores(stores)
+                    .products(products)
                     .build();
 
             Banner created = bannerService.createBanner(banner);
             return ResponseEntity.status(HttpStatus.CREATED).body(mapToAdminBannerResponse(created));
         } catch (Exception e) {
-            log.error("Error creating banner - Exception type: {}", e.getClass().getName());
-            log.error("Error creating banner - Message: {}", e.getMessage());
-            if (e.getCause() != null) {
-                log.error("Error creating banner - Cause: {}", e.getCause().getMessage());
-            }
+            log.error("Error creating banner: {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body("Error al crear banner: [" + e.getClass().getSimpleName() + "] " + e.getMessage()
-                            + (e.getCause() != null ? " | Causa: " + e.getCause().getMessage() : ""));
+                    .body("Error al crear banner: " + e.getMessage());
         }
     }
 
@@ -108,14 +108,21 @@ public class AdminBannerController {
     public ResponseEntity<?> updateBanner(@PathVariable String id, @RequestBody CreateBannerRequest req) {
         try {
             UUID uuid = UUID.fromString(id);
+            String bannerType = req.getType() != null ? req.getType().trim().toUpperCase() : "CAMPAIGN";
+
+            Set<Store> stores = resolveStores(bannerType, req.getStoreIds());
+            Set<Product> products = resolveProducts(bannerType, req.getProductIds());
+
             Banner updateData = Banner.builder()
                     .title(req.getTitle())
                     .description(req.getDescription())
                     .imageUrl(req.getImageUrl())
-                    .type(req.getType())
+                    .type(bannerType)
                     .startDate(req.getStartDate())
                     .endDate(req.getEndDate())
                     .badgeText(req.getBadgeText())
+                    .stores(stores)
+                    .products(products)
                     .build();
 
             Banner updated = bannerService.updateBanner(uuid, updateData);
@@ -155,7 +162,63 @@ public class AdminBannerController {
         }
     }
 
+    private Set<Store> resolveStores(String type, List<String> storeIds) {
+        Set<Store> result = new LinkedHashSet<>();
+        if ("PRODUCT".equalsIgnoreCase(type) || storeIds == null || storeIds.isEmpty()) {
+            return result;
+        }
+
+        List<String> idsToFetch = "STORE".equalsIgnoreCase(type) ? List.of(storeIds.get(0)) : storeIds;
+        for (String idStr : idsToFetch) {
+            if (idStr == null || idStr.isBlank()) continue;
+            try {
+                UUID uuid = UUID.fromString(idStr.trim());
+                storeRepository.findById(uuid).ifPresent(result::add);
+            } catch (Exception ignored) {}
+        }
+        return result;
+    }
+
+    private Set<Product> resolveProducts(String type, List<String> productIds) {
+        Set<Product> result = new LinkedHashSet<>();
+        if ("STORE".equalsIgnoreCase(type) || productIds == null || productIds.isEmpty()) {
+            return result;
+        }
+
+        List<String> idsToFetch = "PRODUCT".equalsIgnoreCase(type) ? List.of(productIds.get(0)) : productIds;
+        for (String idStr : idsToFetch) {
+            if (idStr == null || idStr.isBlank()) continue;
+            try {
+                UUID uuid = UUID.fromString(idStr.trim());
+                productRepository.findById(uuid).ifPresent(result::add);
+            } catch (Exception ignored) {}
+        }
+        return result;
+    }
+
     private AdminBannerResponse mapToAdminBannerResponse(Banner b) {
+        List<Map<String, Object>> storeList = b.getStores().stream()
+                .map(s -> Map.of(
+                        "id", (Object) s.getId().toString(),
+                        "businessName", (Object) (s.getBusinessName() != null ? s.getBusinessName() : "")
+                ))
+                .collect(Collectors.toList());
+
+        List<Map<String, Object>> productList = b.getProducts().stream()
+                .map(p -> Map.of(
+                        "id", (Object) p.getId().toString(),
+                        "name", (Object) (p.getName() != null ? p.getName() : "")
+                ))
+                .collect(Collectors.toList());
+
+        List<String> storeIds = b.getStores().stream()
+                .map(s -> s.getId().toString())
+                .collect(Collectors.toList());
+
+        List<String> productIds = b.getProducts().stream()
+                .map(p -> p.getId().toString())
+                .collect(Collectors.toList());
+
         return AdminBannerResponse.builder()
                 .id(b.getId())
                 .title(b.getTitle())
@@ -167,12 +230,15 @@ public class AdminBannerController {
                 .endDate(b.getEndDate())
                 .badgeText(b.getBadgeText())
                 .createdAt(b.getCreatedAt())
-                .stores(new ArrayList<>())
-                .products(new ArrayList<>())
+                .targetStoreId(b.getTargetStoreId())
+                .targetProductId(b.getTargetProductId())
+                .storeIds(storeIds)
+                .productIds(productIds)
+                .stores(storeList)
+                .products(productList)
                 .build();
     }
 
-    /** DTO de entrada para crear banners — desacoplado de la entidad JPA */
     @Data
     @NoArgsConstructor
     @AllArgsConstructor
@@ -186,7 +252,6 @@ public class AdminBannerController {
         private LocalDateTime startDate;
         @com.fasterxml.jackson.annotation.JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss", shape = com.fasterxml.jackson.annotation.JsonFormat.Shape.STRING)
         private LocalDateTime endDate;
-        // storeIds y productIds se ignoran por ahora (relaciones a implementar en siguiente iteración)
         private List<String> storeIds;
         private List<String> productIds;
     }
@@ -206,9 +271,15 @@ public class AdminBannerController {
         private LocalDateTime startDate;
         private LocalDateTime endDate;
         private LocalDateTime createdAt;
+        private String targetStoreId;
+        private String targetProductId;
         @Builder.Default
-        private List<Object> stores = new ArrayList<>();
+        private List<String> storeIds = new ArrayList<>();
         @Builder.Default
-        private List<Object> products = new ArrayList<>();
+        private List<String> productIds = new ArrayList<>();
+        @Builder.Default
+        private List<Map<String, Object>> stores = new ArrayList<>();
+        @Builder.Default
+        private List<Map<String, Object>> products = new ArrayList<>();
     }
 }
