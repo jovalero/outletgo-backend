@@ -48,6 +48,9 @@ public class Banner {
     @Column(name = "end_date")
     private LocalDateTime endDate;
 
+    @Column(name = "badge_text", length = 50)
+    private String badgeText;
+
     @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(
         name = "banner_stores",

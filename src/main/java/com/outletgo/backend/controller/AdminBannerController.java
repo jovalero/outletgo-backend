@@ -74,6 +74,7 @@ public class AdminBannerController {
                     .status("ACTIVE")
                     .startDate(req.getStartDate())
                     .endDate(req.getEndDate())
+                    .badgeText(req.getBadgeText())
                     .build();
 
             Banner created = bannerService.createBanner(banner);
@@ -114,6 +115,7 @@ public class AdminBannerController {
                     .type(req.getType())
                     .startDate(req.getStartDate())
                     .endDate(req.getEndDate())
+                    .badgeText(req.getBadgeText())
                     .build();
 
             Banner updated = bannerService.updateBanner(uuid, updateData);
@@ -163,6 +165,7 @@ public class AdminBannerController {
                 .status(b.getStatus())
                 .startDate(b.getStartDate())
                 .endDate(b.getEndDate())
+                .badgeText(b.getBadgeText())
                 .createdAt(b.getCreatedAt())
                 .stores(new ArrayList<>())
                 .products(new ArrayList<>())
@@ -178,6 +181,7 @@ public class AdminBannerController {
         private String description;
         private String imageUrl;
         private String type;
+        private String badgeText;
         @com.fasterxml.jackson.annotation.JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss", shape = com.fasterxml.jackson.annotation.JsonFormat.Shape.STRING)
         private LocalDateTime startDate;
         @com.fasterxml.jackson.annotation.JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss", shape = com.fasterxml.jackson.annotation.JsonFormat.Shape.STRING)
@@ -198,6 +202,7 @@ public class AdminBannerController {
         private String imageUrl;
         private String type;
         private String status;
+        private String badgeText;
         private LocalDateTime startDate;
         private LocalDateTime endDate;
         private LocalDateTime createdAt;
