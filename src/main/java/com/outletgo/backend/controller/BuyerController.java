@@ -1695,6 +1695,30 @@ public class BuyerController {
         return ResponseEntity.ok().build();
     }
 
+    @PostMapping("/me/test-push")
+    public ResponseEntity<?> testPushNotification(@RequestHeader("Authorization") String authHeader) {
+        User user = getAuthenticatedUser(authHeader);
+        if (user == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "No autorizado");
+        }
+
+        if (user.getPushToken() == null || user.getPushToken().trim().isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "No tienes un token de notificación registrado en la base de datos. Abre la app móvil e inicia sesión para registrarlo."));
+        }
+
+        Map<String, Object> data = new HashMap<>();
+        data.put("type", "CHAT_MESSAGE");
+
+        pushNotificationService.sendPushNotification(
+                user.getPushToken(),
+                "OutletGo 🛍️",
+                "¡Prueba de notificación push exitosa!",
+                data
+        );
+
+        return ResponseEntity.ok(Map.of("message", "Notificación enviada a " + user.getPushToken()));
+    }
+
     @PatchMapping("/me/email")
     public ResponseEntity<?> updateEmail(
             @RequestHeader("Authorization") String authHeader,
