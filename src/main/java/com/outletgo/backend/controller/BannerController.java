@@ -32,6 +32,9 @@ public class BannerController {
     @Autowired
     private ProductImageRepository productImageRepository;
 
+    @Autowired
+    private com.outletgo.backend.repository.ReviewRepository reviewRepository;
+
     @GetMapping({"", "/", "/active"})
     public ResponseEntity<?> getActiveBanners() {
         List<Banner> banners = bannerService.getActiveBanners();
@@ -79,8 +82,11 @@ public class BannerController {
         List<BannerStoreDto> storesDto = banner.getStores().stream()
                 .map(s -> {
                     String img = s.getHeaderImage() != null && !s.getHeaderImage().isBlank() ? s.getHeaderImage() : "https://picsum.photos/seed/store" + s.getId() + "/200/200";
-                    Double rating = (s.getRatingAvg() != null) ? s.getRatingAvg() : 0.0;
-                    Integer count = (s.getRatingCount() != null) ? s.getRatingCount() : 0;
+                    Double avgFromDb = reviewRepository.getAverageRatingForStore(s.getId());
+                    Long countFromDb = reviewRepository.countReviewsForStore(s.getId());
+
+                    Double rating = (avgFromDb != null) ? avgFromDb : (s.getRatingAvg() != null ? s.getRatingAvg() : 0.0);
+                    Integer count = (countFromDb != null && countFromDb > 0) ? countFromDb.intValue() : (s.getRatingCount() != null ? s.getRatingCount() : 0);
 
                     return BannerStoreDto.builder()
                             .id(s.getId())
@@ -108,8 +114,11 @@ public class BannerController {
                         thumb = "https://picsum.photos/seed/prod" + p.getId() + "/400/300";
                     }
                     Double priceVal = p.getBasePrice() != null ? p.getBasePrice() : 0.0;
-                    Double rating = (p.getRatingAvg() != null) ? p.getRatingAvg() : 0.0;
-                    Integer count = (p.getRatingCount() != null) ? p.getRatingCount() : 0;
+                    Double avgFromDb = reviewRepository.getAverageRatingForProduct(p.getId());
+                    Long countFromDb = reviewRepository.countReviewsForProduct(p.getId());
+
+                    Double rating = (avgFromDb != null) ? avgFromDb : (p.getRatingAvg() != null ? p.getRatingAvg() : 0.0);
+                    Integer count = (countFromDb != null && countFromDb > 0) ? countFromDb.intValue() : (p.getRatingCount() != null ? p.getRatingCount() : 0);
 
                     return BannerProductDto.builder()
                             .id(p.getId())

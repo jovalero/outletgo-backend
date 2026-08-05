@@ -21,6 +21,18 @@ public interface ReviewRepository extends JpaRepository<Review, UUID> {
     @Query("SELECT DISTINCT r FROM Review r LEFT JOIN FETCH r.user LEFT JOIN FETCH r.product LEFT JOIN FETCH r.store WHERE r.store.id = :storeId")
     List<Review> findByStoreIdWithDetails(@Param("storeId") UUID storeId);
 
+    @Query("SELECT AVG(CAST(r.rating AS double)) FROM Review r WHERE r.store.id = :storeId AND r.isVisible = true")
+    Double getAverageRatingForStore(@Param("storeId") UUID storeId);
+
+    @Query("SELECT COUNT(r) FROM Review r WHERE r.store.id = :storeId AND r.isVisible = true")
+    Long countReviewsForStore(@Param("storeId") UUID storeId);
+
+    @Query("SELECT AVG(CAST(r.rating AS double)) FROM Review r WHERE r.product.id = :productId AND r.isVisible = true")
+    Double getAverageRatingForProduct(@Param("productId") UUID productId);
+
+    @Query("SELECT COUNT(r) FROM Review r WHERE r.product.id = :productId AND r.isVisible = true")
+    Long countReviewsForProduct(@Param("productId") UUID productId);
+
     @Query("SELECT r FROM Review r WHERE " +
            "(:scope IS NULL OR (:scope = 'product' AND r.product IS NOT NULL) OR (:scope = 'store' AND r.product IS NULL)) AND " +
            "(:storeId IS NULL OR r.store.id = :storeId) AND " +
