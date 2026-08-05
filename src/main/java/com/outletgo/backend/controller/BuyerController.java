@@ -383,6 +383,8 @@ public class BuyerController {
                         .build())
                 .collect(Collectors.toList());
 
+        String storeImgUrl = p.getStore() != null ? p.getStore().getHeaderImage() : null;
+
         ProductDetailDto dto = ProductDetailDto.builder()
                 .id(p.getId())
                 .name(p.getName())
@@ -392,6 +394,8 @@ public class BuyerController {
                 .price(p.getBasePrice())
                 .storeId(p.getStore().getId())
                 .storeName(p.getStore().getBusinessName())
+                .storeImageUrl(storeImgUrl)
+                .storeHeaderImage(storeImgUrl)
                 .ratingAvg(p.getRatingAvg())
                 .ratingCount(p.getRatingCount())
                 .variations(varDtos)
@@ -486,6 +490,8 @@ public class BuyerController {
                 .name(store.getBusinessName())
                 .description(store.getDescription())
                 .address(store.getAddress())
+                .imageUrl(store.getHeaderImage())
+                .headerImage(store.getHeaderImage())
                 .latitude(storeLat)
                 .longitude(storeLng)
                 .ratingAvg(store.getRatingAvg())
@@ -1797,6 +1803,7 @@ public class BuyerController {
         private Double price;
         private UUID storeId;
         private String storeName;
+        private String storeImageUrl;
         private Double ratingAvg;
         private Integer ratingCount;
         private Double distanceKm;
@@ -1841,6 +1848,8 @@ public class BuyerController {
         private Double price;
         private UUID storeId;
         private String storeName;
+        private String storeImageUrl;
+        private String storeHeaderImage;
         private Double ratingAvg;
         private Integer ratingCount;
         private List<VariationDto> variations;
@@ -1867,6 +1876,8 @@ public class BuyerController {
         private String name;
         private String description;
         private String address;
+        private String imageUrl;
+        private String headerImage;
         private Double latitude;
         private Double longitude;
         private Double ratingAvg;
