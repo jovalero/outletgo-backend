@@ -59,6 +59,8 @@ public class SellerController {
     @Autowired
     private ChatMessageRepository chatMessageRepository;
     @Autowired
+    private com.outletgo.backend.service.PushNotificationService pushNotificationService;
+    @Autowired
     private StoreScheduleRepository storeScheduleRepository;
 
     // Helper: Authenticated User
@@ -1029,6 +1031,18 @@ public class SellerController {
                 .build();
 
         ChatMessage saved = chatMessageRepository.save(newMsg);
+
+        // Enviar notificación Push al comprador (si tiene pushToken configurado)
+        if (buyer != null && buyer.getPushToken() != null && !buyer.getPushToken().trim().isEmpty()) {
+            String title = store != null ? store.getBusinessName() : "Nuevo mensaje";
+            String bodyText = saved.getContent() != null && !saved.getContent().isEmpty() 
+                    ? saved.getContent() 
+                    : "Te envió un mensaje";
+            Map<String, Object> data = new HashMap<>();
+            data.put("type", "CHAT_MESSAGE");
+            data.put("conversationId", conversationId.toString());
+            pushNotificationService.sendPushNotification(buyer.getPushToken(), title, bodyText, data);
+        }
 
         Map<String, Object> res = new HashMap<>();
         res.put("id", saved.getId().toString());
