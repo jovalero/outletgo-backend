@@ -31,7 +31,7 @@ public class User {
     private UUID id;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "auth_provider", nullable = false, length = 20)
+    @Column(name = "auth_provider", length = 20)
     private AuthProvider authProvider = AuthProvider.LOCAL;
 
     @Column(nullable = false, unique = true, length = 100)
