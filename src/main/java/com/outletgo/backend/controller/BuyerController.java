@@ -281,21 +281,50 @@ public class BuyerController {
         List<Product> activeProducts = productRepository.findByIsactiveTrue();
         Set<String> finalTags = detectedTags;
 
-        List<Product> matched = activeProducts.stream()
-                .filter(p -> {
-                    if (finalTags.isEmpty()) return true;
-                    String pName = p.getName() != null ? p.getName().toLowerCase() : "";
-                    String pDesc = p.getDescription() != null ? p.getDescription().toLowerCase() : "";
-                    String pCat = p.getCategory() != null ? p.getCategory().getName().toLowerCase() : "";
-                    List<String> pTags = p.getTags() != null
-                            ? p.getTags().stream().map(t -> t.getTagName().toLowerCase()).collect(Collectors.toList())
-                            : List.of();
+        // Calcular puntuación de coincidencia (score) por producto según cuántas etiquetas coinciden
+        Map<Product, Long> productScores = new HashMap<>();
+        for (Product p : activeProducts) {
+            if (finalTags.isEmpty()) {
+                productScores.put(p, 1L);
+                continue;
+            }
+            String pName = p.getName() != null ? p.getName().toLowerCase() : "";
+            String pDesc = p.getDescription() != null ? p.getDescription().toLowerCase() : "";
+            String pCat = p.getCategory() != null ? p.getCategory().getName().toLowerCase() : "";
+            List<String> pTags = p.getTags() != null
+                    ? p.getTags().stream().map(t -> t.getTagName().toLowerCase()).collect(Collectors.toList())
+                    : List.of();
 
-                    return finalTags.stream().anyMatch(tag ->
-                            pName.contains(tag) || pDesc.contains(tag) || pCat.contains(tag) || pTags.contains(tag)
-                    );
-                })
+            long score = finalTags.stream().filter(tag -> {
+                String t = tag.toLowerCase().trim();
+                return pName.contains(t) || pDesc.contains(t) || pCat.contains(t) || pTags.contains(t);
+            }).count();
+
+            if (score > 0) {
+                productScores.put(p, score);
+            }
+        }
+
+        // Determinar umbral mínimo de coincidencia: si se detectaron 2 o más etiquetas, exigir al menos 2 coincidencias
+        long minScoreThreshold = finalTags.size() >= 2 ? 2L : 1L;
+
+        List<Product> matched = productScores.entrySet().stream()
+                .filter(entry -> entry.getValue() >= minScoreThreshold)
+                .sorted((e1, e2) -> Long.compare(e2.getValue(), e1.getValue())) // Mayor a menor relevancia
+                .map(Map.Entry::getKey)
                 .collect(Collectors.toList());
+
+        boolean hasMeaningful = !matched.isEmpty();
+
+        // Si con el umbral estricto (>= 2) no hay resultados, fallback a score >= 1 pero marcando baja precisión
+        if (matched.isEmpty() && !productScores.isEmpty()) {
+            matched = productScores.entrySet().stream()
+                    .filter(entry -> entry.getValue() >= 1L)
+                    .sorted((e1, e2) -> Long.compare(e2.getValue(), e1.getValue()))
+                    .map(Map.Entry::getKey)
+                    .collect(Collectors.toList());
+            hasMeaningful = false;
+        }
 
         List<CatalogProductDto> dtos = matched.stream()
                 .map(p -> {
@@ -317,7 +346,7 @@ public class BuyerController {
         return ResponseEntity.ok(LensSearchResultResponse.builder()
                 .products(dtos)
                 .detectedTags(new ArrayList<>(detectedTags))
-                .hasMeaningfulResults(!dtos.isEmpty())
+                .hasMeaningfulResults(hasMeaningful)
                 .build());
     }
 
