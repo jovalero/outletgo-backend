@@ -79,8 +79,8 @@ public class BannerController {
         List<BannerStoreDto> storesDto = banner.getStores().stream()
                 .map(s -> {
                     String img = s.getHeaderImage() != null && !s.getHeaderImage().isBlank() ? s.getHeaderImage() : "https://picsum.photos/seed/store" + s.getId() + "/200/200";
-                    Double rating = (s.getRatingAvg() != null && s.getRatingAvg() > 0) ? s.getRatingAvg() : 4.5;
-                    Integer count = (s.getRatingCount() != null && s.getRatingCount() > 0) ? s.getRatingCount() : 12;
+                    Double rating = (s.getRatingAvg() != null) ? s.getRatingAvg() : 0.0;
+                    Integer count = (s.getRatingCount() != null) ? s.getRatingCount() : 0;
 
                     return BannerStoreDto.builder()
                             .id(s.getId())
@@ -108,8 +108,8 @@ public class BannerController {
                         thumb = "https://picsum.photos/seed/prod" + p.getId() + "/400/300";
                     }
                     Double priceVal = p.getBasePrice() != null ? p.getBasePrice() : 0.0;
-                    Double rating = (p.getRatingAvg() != null && p.getRatingAvg() > 0) ? p.getRatingAvg() : 4.5;
-                    Integer count = (p.getRatingCount() != null && p.getRatingCount() > 0) ? p.getRatingCount() : 8;
+                    Double rating = (p.getRatingAvg() != null) ? p.getRatingAvg() : 0.0;
+                    Integer count = (p.getRatingCount() != null) ? p.getRatingCount() : 0;
 
                     return BannerProductDto.builder()
                             .id(p.getId())
