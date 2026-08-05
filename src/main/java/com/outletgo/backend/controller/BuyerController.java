@@ -1624,6 +1624,8 @@ public class BuyerController {
 
         if (body.getName() != null) {
             user.setName(body.getName().trim());
+        } else if (body.getFirstName() != null) {
+            user.setName(body.getFirstName().trim());
         }
         if (body.getLastName() != null) {
             user.setLastName(body.getLastName().trim());
@@ -2113,6 +2115,8 @@ public class BuyerController {
     @AllArgsConstructor
     public static class UpdateProfileRequest {
         private String name;
+        private String firstName;
+        private String lastName;
         private String avatarUrl;
     }
 
