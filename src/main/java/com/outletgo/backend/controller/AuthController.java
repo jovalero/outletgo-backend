@@ -1,6 +1,7 @@
 package com.outletgo.backend.controller;
 
 import com.outletgo.backend.dto.AuthResponse;
+import com.outletgo.backend.dto.GoogleCallbackRequest;
 import com.outletgo.backend.dto.LoginRequest;
 import com.outletgo.backend.dto.RegisterRequest;
 import com.outletgo.backend.service.AuthService;
@@ -65,5 +66,15 @@ public class AuthController {
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Token inválido");
         }
+    }
+
+    @PostMapping("/google/callback")
+    public ResponseEntity<AuthResponse> googleCallback(@Valid @RequestBody GoogleCallbackRequest request) {
+        AuthResponse response = authService.loginOrRegisterWithGoogle(
+                request.getEmail(),
+                request.getName(),
+                request.getAvatarUrl()
+        );
+        return ResponseEntity.ok(response);
     }
 }

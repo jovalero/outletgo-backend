@@ -127,4 +127,45 @@ public class AuthService {
                 .user(userDto)
                 .build();
     }
+    @Transactional
+    public AuthResponse loginOrRegisterWithGoogle(String email, String name, String avatarUrl) {
+        String normalizedEmail = email != null ? email.trim().toLowerCase() : "";
+
+        // Buscar si el usuario ya existe (registro previo con email/pass o Google)
+        User user = userRepository.findFirstByEmailIgnoreCase(normalizedEmail).orElse(null);
+
+        if (user == null) {
+            // Primera vez que ingresa con Google → registrar automáticamente como CLIENT
+            user = User.builder()
+                    .email(normalizedEmail)
+                    .password(passwordEncoder.encode(UUID.randomUUID().toString())) // password inutilizable
+                    .role(Role.CLIENT)
+                    .isactive(true)
+                    .build();
+            user = userRepository.save(user);
+        }
+
+        if (!user.getIsactive()) {
+            throw new BadRequestException("Esta cuenta de usuario ha sido desactivada");
+        }
+
+        // Generar nuestro propio JWT (idéntico al login normal)
+        String token = jwtUtil.generateToken(user.getId(), user.getEmail(), user.getRole().name());
+
+        String displayName = (name != null && !name.isBlank()) ? name : normalizedEmail.split("@")[0];
+
+        AuthResponse.UserDto userDto = AuthResponse.UserDto.builder()
+                .id(user.getId())
+                .email(user.getEmail())
+                .role(user.getRole())
+                .name(displayName)
+                .avatarUrl(avatarUrl)
+                .isActive(user.getIsactive())
+                .build();
+
+        return AuthResponse.builder()
+                .token(token)
+                .user(userDto)
+                .build();
+    }
 }
