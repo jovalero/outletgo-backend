@@ -23,7 +23,18 @@ public class BannerService {
     @Transactional(readOnly = true)
     public Page<Banner> getBanners(int page, int size) {
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
-        return bannerRepository.findAllWithRelations(pageable);
+        Page<Banner> bannerPage = bannerRepository.findAllWithRelations(pageable);
+        if (bannerPage != null && bannerPage.getContent() != null) {
+            for (Banner b : bannerPage.getContent()) {
+                if (b.getStores() != null) {
+                    b.getStores().size();
+                }
+                if (b.getProducts() != null) {
+                    b.getProducts().size();
+                }
+            }
+        }
+        return bannerPage;
     }
 
     @Transactional
@@ -80,7 +91,13 @@ public class BannerService {
         return banners;
     }
 
+    @Transactional(readOnly = true)
     public Optional<Banner> getBannerById(UUID id) {
-        return bannerRepository.findById(id);
+        Optional<Banner> optional = bannerRepository.findById(id);
+        optional.ifPresent(b -> {
+            if (b.getStores() != null) b.getStores().size();
+            if (b.getProducts() != null) b.getProducts().size();
+        });
+        return optional;
     }
 }
