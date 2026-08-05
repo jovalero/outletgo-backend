@@ -6,6 +6,7 @@ import com.outletgo.backend.entity.*;
 import com.outletgo.backend.repository.*;
 import io.jsonwebtoken.Claims;
 import lombok.*;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.*;
 import org.springframework.http.HttpStatus;
