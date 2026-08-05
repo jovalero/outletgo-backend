@@ -135,12 +135,28 @@ public class AuthService {
         User user = userRepository.findFirstByEmailIgnoreCase(normalizedEmail).orElse(null);
 
         if (user == null) {
+            // Extraer nombre y apellido de Google
+            String firstName = null;
+            String lastName = null;
+            if (name != null && !name.trim().isEmpty()) {
+                String[] parts = name.trim().split(" ", 2);
+                firstName = parts[0];
+                if (parts.length > 1) {
+                    lastName = parts[1];
+                }
+            } else {
+                firstName = normalizedEmail.split("@")[0];
+            }
+
             // Primera vez que ingresa con Google → registrar automáticamente como CLIENT
             user = User.builder()
                     .email(normalizedEmail)
                     .password(passwordEncoder.encode(UUID.randomUUID().toString())) // password inutilizable
                     .role(Role.CLIENT)
                     .isactive(true)
+                    .name(firstName)
+                    .lastName(lastName)
+                    .avatarUrl(avatarUrl)
                     .build();
             user = userRepository.save(user);
         }
@@ -152,14 +168,13 @@ public class AuthService {
         // Generar nuestro propio JWT (idéntico al login normal)
         String token = jwtUtil.generateToken(user.getId(), user.getEmail(), user.getRole().name());
 
-        String displayName = (name != null && !name.isBlank()) ? name : normalizedEmail.split("@")[0];
-
         AuthResponse.UserDto userDto = AuthResponse.UserDto.builder()
                 .id(user.getId())
                 .email(user.getEmail())
                 .role(user.getRole())
-                .name(displayName)
-                .avatarUrl(avatarUrl)
+                .name(user.getName() != null ? user.getName() : user.getEmail().split("@")[0])
+                .lastName(user.getLastName())
+                .avatarUrl(user.getAvatarUrl())
                 .isActive(user.getIsactive())
                 .build();
 

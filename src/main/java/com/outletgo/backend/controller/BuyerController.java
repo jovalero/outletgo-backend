@@ -1622,13 +1622,25 @@ public class BuyerController {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "No autorizado");
         }
 
+        if (body.getName() != null) {
+            user.setName(body.getName().trim());
+        }
+        if (body.getLastName() != null) {
+            user.setLastName(body.getLastName().trim());
+        }
+        if (body.getAvatarUrl() != null) {
+            user.setAvatarUrl(body.getAvatarUrl().trim());
+        }
+        userRepository.save(user);
+
         // Return user DTO directly
         AuthResponse.UserDto userDto = AuthResponse.UserDto.builder()
                 .id(user.getId())
                 .email(user.getEmail())
                 .role(user.getRole())
-                .name(body.getName() != null && !body.getName().trim().isEmpty() ? body.getName().trim() : user.getEmail().split("@")[0])
-                .avatarUrl(body.getAvatarUrl())
+                .name(user.getName() != null ? user.getName() : user.getEmail().split("@")[0])
+                .lastName(user.getLastName())
+                .avatarUrl(user.getAvatarUrl())
                 .isActive(user.getIsactive())
                 .build();
         return ResponseEntity.ok(userDto);

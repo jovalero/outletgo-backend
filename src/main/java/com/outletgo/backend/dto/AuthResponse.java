@@ -25,6 +25,7 @@ public class AuthResponse {
         private String email;
         private Role role;
         private String name;
+        private String lastName;
         private UUID storeId;
         private String avatarUrl;
         

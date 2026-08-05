@@ -38,6 +38,15 @@ public class User {
     @Column(name = "isactive", nullable = false)
     private Boolean isactive = true;
 
+    @Column(length = 100)
+    private String name;
+
+    @Column(name = "last_name", length = 100)
+    private String lastName;
+
+    @Column(name = "avatar_url", length = 500)
+    private String avatarUrl;
+
     @Column(name = "selected_logistics_type", length = 20)
     private String selectedLogisticsType; // PICKUP | DELIVERY
 

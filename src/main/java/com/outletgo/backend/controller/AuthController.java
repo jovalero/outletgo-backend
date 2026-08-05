@@ -58,8 +58,9 @@ public class AuthController {
                     .id(user.getId())
                     .email(user.getEmail())
                     .role(user.getRole())
-                    .name(user.getEmail().split("@")[0])
-                    .avatarUrl(null)
+                    .name(user.getName() != null ? user.getName() : user.getEmail().split("@")[0])
+                    .lastName(user.getLastName())
+                    .avatarUrl(user.getAvatarUrl())
                     .isActive(user.getIsactive())
                     .build();
             return ResponseEntity.ok(userDto);
