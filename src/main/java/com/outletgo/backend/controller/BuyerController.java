@@ -1663,7 +1663,7 @@ public class BuyerController {
         return ResponseEntity.ok(userDto);
     }
 
-    @PostMapping("/me/push-token")
+    @PostMapping({"/me/push-token", "/notifications/register"})
     public ResponseEntity<Void> updatePushToken(
             @RequestHeader("Authorization") String authHeader,
             @RequestBody Map<String, String> body) {
