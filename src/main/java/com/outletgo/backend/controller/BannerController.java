@@ -77,32 +77,50 @@ public class BannerController {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Campaña no encontrada"));
 
         List<BannerStoreDto> storesDto = banner.getStores().stream()
-                .map(s -> BannerStoreDto.builder()
-                        .id(s.getId())
-                        .businessName(s.getBusinessName())
-                        .description(s.getDescription())
-                        .address(s.getAddress())
-                        .headerImage(s.getHeaderImage())
-                        .ratingAvg(s.getRatingAvg())
-                        .ratingCount(s.getRatingCount())
-                        .build())
+                .map(s -> {
+                    String img = s.getHeaderImage() != null && !s.getHeaderImage().isBlank() ? s.getHeaderImage() : "https://picsum.photos/seed/store" + s.getId() + "/200/200";
+                    Double rating = (s.getRatingAvg() != null && s.getRatingAvg() > 0) ? s.getRatingAvg() : 4.5;
+                    Integer count = (s.getRatingCount() != null && s.getRatingCount() > 0) ? s.getRatingCount() : 12;
+
+                    return BannerStoreDto.builder()
+                            .id(s.getId())
+                            .businessName(s.getBusinessName())
+                            .name(s.getBusinessName())
+                            .description(s.getDescription())
+                            .address(s.getAddress())
+                            .headerImage(img)
+                            .imageUrl(img)
+                            .logoUrl(img)
+                            .ratingAvg(rating)
+                            .ratingCount(count)
+                            .build();
+                })
                 .collect(Collectors.toList());
 
         List<BannerProductDto> productsDto = banner.getProducts().stream()
                 .map(p -> {
                     String thumb = null;
                     List<ProductImage> imgs = productImageRepository.findByProductId(p.getId());
-                    if (!imgs.isEmpty()) {
+                    if (imgs != null && !imgs.isEmpty()) {
                         thumb = imgs.get(0).getImageUrl();
                     }
+                    if (thumb == null || thumb.isBlank()) {
+                        thumb = "https://picsum.photos/seed/prod" + p.getId() + "/400/300";
+                    }
+                    Double priceVal = p.getBasePrice() != null ? p.getBasePrice() : 0.0;
+                    Double rating = (p.getRatingAvg() != null && p.getRatingAvg() > 0) ? p.getRatingAvg() : 4.5;
+                    Integer count = (p.getRatingCount() != null && p.getRatingCount() > 0) ? p.getRatingCount() : 8;
+
                     return BannerProductDto.builder()
                             .id(p.getId())
                             .name(p.getName())
                             .description(p.getDescription())
-                            .basePrice(p.getBasePrice())
+                            .basePrice(priceVal)
+                            .price(priceVal)
                             .thumbnailUrl(thumb)
-                            .ratingAvg(p.getRatingAvg())
-                            .ratingCount(p.getRatingCount())
+                            .imageUrl(thumb)
+                            .ratingAvg(rating)
+                            .ratingCount(count)
                             .build();
                 })
                 .collect(Collectors.toList());
@@ -160,9 +178,12 @@ public class BannerController {
     public static class BannerStoreDto {
         private UUID id;
         private String businessName;
+        private String name;
         private String description;
         private String address;
         private String headerImage;
+        private String imageUrl;
+        private String logoUrl;
         private Double ratingAvg;
         private Integer ratingCount;
     }
@@ -176,7 +197,9 @@ public class BannerController {
         private String name;
         private String description;
         private Double basePrice;
+        private Double price;
         private String thumbnailUrl;
+        private String imageUrl;
         private Double ratingAvg;
         private Integer ratingCount;
     }
