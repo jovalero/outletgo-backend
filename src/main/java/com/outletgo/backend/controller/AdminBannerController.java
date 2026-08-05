@@ -75,8 +75,8 @@ public class AdminBannerController {
                     .imageUrl(req.getImageUrl())
                     .type(bannerType)
                     .status("ACTIVE")
-                    .startDate(req.getStartDate())
-                    .endDate(req.getEndDate())
+                    .startDate(req.parseStartDate())
+                    .endDate(req.parseEndDate())
                     .badgeText(req.getBadgeText())
                     .stores(stores)
                     .products(products)
@@ -118,8 +118,8 @@ public class AdminBannerController {
                     .description(req.getDescription())
                     .imageUrl(req.getImageUrl())
                     .type(bannerType)
-                    .startDate(req.getStartDate())
-                    .endDate(req.getEndDate())
+                    .startDate(req.parseStartDate())
+                    .endDate(req.parseEndDate())
                     .badgeText(req.getBadgeText())
                     .stores(stores)
                     .products(products)
@@ -248,12 +248,38 @@ public class AdminBannerController {
         private String imageUrl;
         private String type;
         private String badgeText;
-        @com.fasterxml.jackson.annotation.JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss", shape = com.fasterxml.jackson.annotation.JsonFormat.Shape.STRING)
-        private LocalDateTime startDate;
-        @com.fasterxml.jackson.annotation.JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss", shape = com.fasterxml.jackson.annotation.JsonFormat.Shape.STRING)
-        private LocalDateTime endDate;
+        private String startDate;
+        private String endDate;
         private List<String> storeIds;
         private List<String> productIds;
+
+        public LocalDateTime parseStartDate() {
+            return parseDateTime(startDate);
+        }
+
+        public LocalDateTime parseEndDate() {
+            return parseDateTime(endDate);
+        }
+
+        private static LocalDateTime parseDateTime(String text) {
+            if (text == null || text.isBlank()) return null;
+            String clean = text.trim().replace("Z", "");
+            if (clean.contains(".")) {
+                clean = clean.split("\\.")[0];
+            }
+            if (clean.length() == 16) {
+                clean = clean + ":00";
+            }
+            try {
+                return LocalDateTime.parse(clean);
+            } catch (Exception e) {
+                try {
+                    return LocalDateTime.parse(clean, java.time.format.DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+                } catch (Exception ex) {
+                    return null;
+                }
+            }
+        }
     }
 
     @Data
