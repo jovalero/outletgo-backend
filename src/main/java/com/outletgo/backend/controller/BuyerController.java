@@ -70,6 +70,9 @@ public class BuyerController {
     private ChatMessageRepository chatMessageRepository;
 
     @Autowired
+    private com.outletgo.backend.service.PushNotificationService pushNotificationService;
+
+    @Autowired
     private ReportRepository reportRepository;
 
     @Autowired
@@ -1087,6 +1090,17 @@ public class BuyerController {
 
         ChatMessage saved = chatMessageRepository.save(message);
 
+        // Enviar notificación Push al receptor (si tiene token configurado)
+        if (receiver != null && receiver.getPushToken() != null && !receiver.getPushToken().trim().isEmpty()) {
+            String title = store != null ? store.getName() : "Nuevo mensaje";
+            String bodyText = saved.getContent() != null && !saved.getContent().isEmpty() 
+                    ? saved.getContent() 
+                    : "Te envió una imagen";
+            Map<String, Object> data = new HashMap<>();
+            data.put("conversationId", conversationId.toString());
+            pushNotificationService.sendPushNotification(receiver.getPushToken(), title, bodyText, data);
+        }
+
         ChatMessageDto res = ChatMessageDto.builder()
                 .id(saved.getId())
                 .conversationId(saved.getConversationId())
@@ -1647,6 +1661,25 @@ public class BuyerController {
                 .authProvider(user.getAuthProvider() != null ? user.getAuthProvider().name() : "LOCAL")
                 .build();
         return ResponseEntity.ok(userDto);
+    }
+
+    @PostMapping("/me/push-token")
+    public ResponseEntity<Void> updatePushToken(
+            @RequestHeader("Authorization") String authHeader,
+            @RequestBody Map<String, String> body) {
+
+        User user = getAuthenticatedUser(authHeader);
+        if (user == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "No autorizado");
+        }
+
+        String token = body.get("token");
+        if (token != null) {
+            user.setPushToken(token.trim());
+            userRepository.save(user);
+        }
+
+        return ResponseEntity.ok().build();
     }
 
     @PatchMapping("/me/email")

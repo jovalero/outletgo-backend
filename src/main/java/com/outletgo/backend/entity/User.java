@@ -56,6 +56,9 @@ public class User {
     @Column(name = "avatar_url", length = 500)
     private String avatarUrl;
 
+    @Column(name = "push_token", length = 255)
+    private String pushToken;
+
     @Column(name = "selected_logistics_type", length = 20)
     private String selectedLogisticsType; // PICKUP | DELIVERY
 
