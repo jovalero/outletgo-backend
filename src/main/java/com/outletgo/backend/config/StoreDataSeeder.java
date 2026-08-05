@@ -174,6 +174,20 @@ public class StoreDataSeeder implements CommandLineRunner {
                     productRepository.save(product);
                 }
 
+                // Añadir reseñas directas a la tienda
+                for (int sr = 0; sr < 2; sr++) {
+                    Review storeRev = Review.builder()
+                        .product(null)
+                        .store(store)
+                        .user(reviewer)
+                        .rating(4 + random.nextInt(2))
+                        .comment("Excelente atención y envío rapidísimo en la tienda!")
+                        .isVisible(true)
+                        .createdAt(LocalDateTime.now().minusDays(random.nextInt(15)))
+                        .build();
+                    reviewRepository.save(storeRev);
+                }
+
                 // Calcular promedio tienda
                 Double storeAvg = reviewRepository.getAverageRatingForStore(store.getId());
                 Long storeCount = reviewRepository.countReviewsForStore(store.getId());

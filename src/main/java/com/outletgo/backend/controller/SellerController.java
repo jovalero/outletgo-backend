@@ -844,7 +844,8 @@ public class SellerController {
 
         try {
             Store store = getAuthenticatedStore(authHeader);
-            List<Review> reviews = reviewRepository.findByStoreIdWithDetails(store.getId()).stream()
+            List<Review> allStoreReviews = reviewRepository.findByStoreIdWithDetails(store.getId());
+            List<Review> reviews = allStoreReviews.stream()
                     .filter(r -> r != null && r.getProduct() == null)
                     .filter(r -> rating == null || rating <= 0 || (r.getRating() != null && r.getRating().equals(rating)))
                     .sorted((r1, r2) -> {
@@ -854,6 +855,19 @@ public class SellerController {
                                 : r2.getCreatedAt().compareTo(r1.getCreatedAt());
                     })
                     .collect(Collectors.toList());
+
+            if (reviews.isEmpty()) {
+                reviews = allStoreReviews.stream()
+                        .filter(r -> r != null)
+                        .filter(r -> rating == null || rating <= 0 || (r.getRating() != null && r.getRating().equals(rating)))
+                        .sorted((r1, r2) -> {
+                            if (r1.getCreatedAt() == null || r2.getCreatedAt() == null) return 0;
+                            return "ASC".equalsIgnoreCase(sortCreatedAt)
+                                    ? r1.getCreatedAt().compareTo(r2.getCreatedAt())
+                                    : r2.getCreatedAt().compareTo(r1.getCreatedAt());
+                        })
+                        .collect(Collectors.toList());
+            }
 
             int start = Math.min(page * size, reviews.size());
             int end = Math.min(start + size, reviews.size());
