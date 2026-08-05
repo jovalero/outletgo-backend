@@ -1092,7 +1092,7 @@ public class BuyerController {
 
         // Enviar notificación Push al receptor (si tiene token configurado)
         if (receiver != null && receiver.getPushToken() != null && !receiver.getPushToken().trim().isEmpty()) {
-            String title = store != null ? store.getName() : "Nuevo mensaje";
+            String title = store != null ? store.getBusinessName() : "Nuevo mensaje";
             String bodyText = saved.getContent() != null && !saved.getContent().isEmpty() 
                     ? saved.getContent() 
                     : "Te envió una imagen";
