@@ -44,6 +44,9 @@ public class PublicCatalogController {
     @Autowired
     private StoreRepository storeRepository;
 
+    @Autowired
+    private com.outletgo.backend.repository.ReviewRepository reviewRepository;
+
     @GetMapping({"/api/products/categories", "/api/catalog/categories", "/products/categories"})
     public ResponseEntity<List<Category>> getCategories() {
         return ResponseEntity.ok(categoryRepository.findAll());
@@ -62,6 +65,9 @@ public class PublicCatalogController {
                     if (!imgs.isEmpty()) {
                         thumb = imgs.get(0).getImageUrl();
                     }
+                    Double avgRating = reviewRepository.getAverageRatingForProduct(p.getId());
+                    Long countRating = reviewRepository.countReviewsForProduct(p.getId());
+
                     return CatalogProductDto.builder()
                             .id(p.getId())
                             .name(p.getName())
@@ -69,8 +75,8 @@ public class PublicCatalogController {
                             .price(p.getBasePrice())
                             .storeId(p.getStore() != null ? p.getStore().getId() : null)
                             .storeName(p.getStore() != null ? p.getStore().getBusinessName() : "Tienda")
-                            .ratingAvg(p.getRatingAvg())
-                            .ratingCount(p.getRatingCount())
+                            .ratingAvg(avgRating != null ? Math.round(avgRating * 10.0) / 10.0 : null)
+                            .ratingCount(countRating != null ? countRating.intValue() : 0)
                             .distanceKm(null)
                             .build();
                 })
@@ -84,20 +90,24 @@ public class PublicCatalogController {
         List<Store> stores = storeRepository.findAll();
         List<TopRatedStoreDto> list = stores.stream()
                 .filter(s -> s.getUser() != null && Boolean.TRUE.equals(s.getUser().getIsactive()))
+                .map(s -> {
+                    Double avgRating = reviewRepository.getAverageRatingForStore(s.getId());
+                    Long countRating = reviewRepository.countReviewsForStore(s.getId());
+                    return TopRatedStoreDto.builder()
+                            .id(s.getId())
+                            .name(s.getBusinessName())
+                            .ratingAvg(avgRating != null ? Math.round(avgRating * 10.0) / 10.0 : null)
+                            .ratingCount(countRating != null ? countRating.intValue() : 0)
+                            .imageUrl(s.getHeaderImage())
+                            .address(s.getAddress())
+                            .build();
+                })
                 .sorted((a, b) -> {
                     Double ratingA = a.getRatingAvg() != null ? a.getRatingAvg() : 0.0;
                     Double ratingB = b.getRatingAvg() != null ? b.getRatingAvg() : 0.0;
                     return Double.compare(ratingB, ratingA);
                 })
                 .limit(limit)
-                .map(s -> TopRatedStoreDto.builder()
-                        .id(s.getId())
-                        .name(s.getBusinessName())
-                        .ratingAvg(s.getRatingAvg())
-                        .ratingCount(s.getRatingCount())
-                        .imageUrl(s.getHeaderImage())
-                        .address(s.getAddress())
-                        .build())
                 .collect(Collectors.toList());
         return ResponseEntity.ok(list);
     }
