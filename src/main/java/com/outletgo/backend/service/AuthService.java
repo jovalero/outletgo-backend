@@ -153,6 +153,7 @@ public class AuthService {
                     .email(normalizedEmail)
                     .password(passwordEncoder.encode(UUID.randomUUID().toString())) // password inutilizable
                     .role(Role.CLIENT)
+                    .authProvider(User.AuthProvider.GOOGLE)
                     .isactive(true)
                     .name(firstName)
                     .lastName(lastName)
@@ -176,6 +177,7 @@ public class AuthService {
                 .lastName(user.getLastName())
                 .avatarUrl(user.getAvatarUrl())
                 .isActive(user.getIsactive())
+                .authProvider(user.getAuthProvider() != null ? user.getAuthProvider().name() : "LOCAL")
                 .build();
 
         return AuthResponse.builder()

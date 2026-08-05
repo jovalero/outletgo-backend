@@ -31,5 +31,6 @@ public class AuthResponse {
         
         @JsonProperty("isActive")
         private boolean isActive;
+        private String authProvider;
     }
 }

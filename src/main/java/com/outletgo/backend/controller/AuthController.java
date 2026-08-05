@@ -62,6 +62,7 @@ public class AuthController {
                     .lastName(user.getLastName())
                     .avatarUrl(user.getAvatarUrl())
                     .isActive(user.getIsactive())
+                    .authProvider(user.getAuthProvider() != null ? user.getAuthProvider().name() : "LOCAL")
                     .build();
             return ResponseEntity.ok(userDto);
         } catch (Exception e) {

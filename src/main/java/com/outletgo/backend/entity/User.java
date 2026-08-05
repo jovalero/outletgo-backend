@@ -20,10 +20,19 @@ public class User {
         ADMIN
     }
 
+    public enum AuthProvider {
+        LOCAL,
+        GOOGLE
+    }
+
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
     @Column(name = "id", columnDefinition = "uuid", updatable = false, nullable = false)
     private UUID id;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "auth_provider", nullable = false, length = 20)
+    private AuthProvider authProvider = AuthProvider.LOCAL;
 
     @Column(nullable = false, unique = true, length = 100)
     private String email;
@@ -68,6 +77,9 @@ public class User {
         }
         if (isactive == null) {
             isactive = true;
+        }
+        if (authProvider == null) {
+            authProvider = AuthProvider.LOCAL;
         }
     }
 }
