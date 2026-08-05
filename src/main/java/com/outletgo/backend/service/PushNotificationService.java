@@ -30,6 +30,9 @@ public class PushNotificationService {
             payload.put("sound", "default");
             payload.put("title", title);
             payload.put("body", body);
+            payload.put("channelId", "default");
+            payload.put("priority", "high");
+            payload.put("badge", 1);
             if (data != null) {
                 payload.put("data", data);
             }
