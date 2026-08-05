@@ -324,7 +324,7 @@ public class SellerController {
                         .orElseGet(() -> categoryRepository.save(Category.builder().name(cleanStr).build())));
     }
 
-    private Set<Tag> resolveTags(List<String> manualTags, List<String> imageUrls) {
+    private Set<Tag> resolveTags(List<String> manualTags, List<String> imageUrls, String productName, String description) {
         Set<Tag> tags = new HashSet<>();
         Set<String> tagNames = new LinkedHashSet<>();
 
@@ -336,10 +336,10 @@ public class SellerController {
             }
         }
 
-        // Auto-extract AI tags from uploaded images via Google Vision / Lens AI
+        // Auto-extract AI tags from uploaded images & product context via Google Vision / Lens AI
         if (imageUrls != null && !imageUrls.isEmpty()) {
             try {
-                Set<String> aiTags = imageTaggingService.extractTagsFromUrls(imageUrls);
+                Set<String> aiTags = imageTaggingService.extractTagsFromUrls(imageUrls, productName, description);
                 tagNames.addAll(aiTags);
             } catch (Exception e) {
                 log.warn("Fallo el etiquetado automatico de imagenes por IA: {}", e.getMessage());
@@ -378,7 +378,7 @@ public class SellerController {
         Store store = getAuthenticatedStore(authHeader);
 
         Category category = resolveCategory(payload.getCategoryId());
-        Set<Tag> tags = resolveTags(payload.getTags(), payload.getImageUrls());
+        Set<Tag> tags = resolveTags(payload.getTags(), payload.getImageUrls(), payload.getName(), payload.getDescription());
 
         Product product = Product.builder()
                 .name(payload.getName())
@@ -445,7 +445,7 @@ public class SellerController {
 
         // Si las imagenes cambiaron, re-analizamos con IA. Si no cambiaron, respetamos la modificacion manual de tags del vendedor.
         Set<Tag> tags = imagesChanged
-                ? resolveTags(payload.getTags(), newImageUrls)
+                ? resolveTags(payload.getTags(), newImageUrls, payload.getName(), payload.getDescription())
                 : resolveManualTagsOnly(payload.getTags());
 
         product.setName(payload.getName());

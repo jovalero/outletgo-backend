@@ -83,21 +83,39 @@ public class ImageTaggingService {
     }
 
     /**
-     * Extrae etiquetas de IA a partir de una lista de URLs de imágenes.
+     * Extrae etiquetas de IA a partir de una lista de URLs de imágenes y contexto del producto.
      */
-    public Set<String> extractTagsFromUrls(List<String> imageUrls) {
+    public Set<String> extractTagsFromUrls(List<String> imageUrls, String productName, String description) {
         Set<String> detected = new LinkedHashSet<>();
-        if (imageUrls == null || imageUrls.isEmpty()) {
-            return detected;
+        if (imageUrls != null) {
+            for (String url : imageUrls) {
+                if (url == null || url.trim().isEmpty()) continue;
+                Set<String> tagsForUrl = processImageUrl(url.trim());
+                detected.addAll(tagsForUrl);
+            }
         }
 
-        for (String url : imageUrls) {
-            if (url == null || url.trim().isEmpty()) continue;
-            Set<String> tagsForUrl = processImageUrl(url.trim());
-            detected.addAll(tagsForUrl);
+        // Fallback: Si no se obtuvieron etiquetas de la imagen (ej. sin API key o URL sin keywords), extraer del nombre y descripcion
+        if (detected.isEmpty()) {
+            if (productName != null && !productName.trim().isEmpty()) {
+                detected.addAll(extractKeywordsFromText(productName));
+            }
+            if (description != null && !description.trim().isEmpty()) {
+                detected.addAll(extractKeywordsFromText(description));
+            }
+        }
+
+        // Fallback garantizado por defecto
+        if (detected.isEmpty()) {
+            detected.add("outlet");
+            detected.add("moda");
         }
 
         return detected;
+    }
+
+    public Set<String> extractTagsFromUrls(List<String> imageUrls) {
+        return extractTagsFromUrls(imageUrls, null, null);
     }
 
     /**
