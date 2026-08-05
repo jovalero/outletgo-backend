@@ -970,6 +970,76 @@ public class SellerController {
         return ResponseEntity.ok(new PageImpl<>(paginated, PageRequest.of(page, size), list.size()));
     }
 
+    @GetMapping("/chats/{conversationId}/messages")
+    public ResponseEntity<?> getSellerChatMessages(
+            @RequestHeader("Authorization") String authHeader,
+            @PathVariable UUID conversationId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "100") int size) {
+
+        Store store = getAuthenticatedStore(authHeader);
+        List<ChatMessage> messages = chatMessageRepository.findByConversationIdOrderBySentAtAsc(conversationId);
+
+        List<Map<String, Object>> mapped = messages.stream()
+                .map(m -> {
+                    Map<String, Object> map = new HashMap<>();
+                    map.put("id", m.getId().toString());
+                    map.put("conversationId", m.getConversationId().toString());
+                    map.put("senderRole", m.getSender().getId().equals(store.getUser().getId()) ? "SELLER" : "BUYER");
+                    map.put("content", m.getContent() != null ? m.getContent() : "");
+                    map.put("sentAt", m.getSentAt() != null ? m.getSentAt().toString() : LocalDateTime.now().toString());
+                    return map;
+                })
+                .collect(Collectors.toList());
+
+        int start = Math.min(page * size, mapped.size());
+        int end = Math.min(start + size, mapped.size());
+        List<Map<String, Object>> paginated = mapped.subList(start, end);
+
+        return ResponseEntity.ok(new PageImpl<>(paginated, PageRequest.of(page, size), mapped.size()));
+    }
+
+    @PostMapping("/chats/{conversationId}/messages")
+    public ResponseEntity<?> sendSellerChatMessage(
+            @RequestHeader("Authorization") String authHeader,
+            @PathVariable UUID conversationId,
+            @RequestBody Map<String, String> body) {
+
+        Store store = getAuthenticatedStore(authHeader);
+        String content = body.getOrDefault("content", "");
+        if (content == null || content.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "El contenido del mensaje no puede estar vacío");
+        }
+
+        List<ChatMessage> prev = chatMessageRepository.findByConversationIdOrderBySentAtAsc(conversationId);
+        if (prev.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Conversación no encontrada");
+        }
+
+        ChatMessage reference = prev.get(0);
+        User buyer = reference.getSender().getId().equals(store.getUser().getId()) ? reference.getReceiver() : reference.getSender();
+
+        ChatMessage newMsg = ChatMessage.builder()
+                .conversationId(conversationId)
+                .store(store)
+                .sender(store.getUser())
+                .receiver(buyer)
+                .content(content.trim())
+                .sentAt(LocalDateTime.now())
+                .build();
+
+        ChatMessage saved = chatMessageRepository.save(newMsg);
+
+        Map<String, Object> res = new HashMap<>();
+        res.put("id", saved.getId().toString());
+        res.put("conversationId", saved.getConversationId().toString());
+        res.put("senderRole", "SELLER");
+        res.put("content", saved.getContent());
+        res.put("sentAt", saved.getSentAt().toString());
+
+        return ResponseEntity.ok(res);
+    }
+
     // ==========================================
     // DTO DEFINITIONS
     // ==========================================
