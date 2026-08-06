@@ -507,13 +507,12 @@ public class SellerController {
         // Clean up variations removed from payload (if not referenced by historical orders)
         for (ProductVariation oldVar : existingVars) {
             if (!keptVariationIds.contains(oldVar.getId())) {
-                try {
-                    productVariationRepository.delete(oldVar);
-                    productVariationRepository.flush();
-                } catch (Exception e) {
-                    // Safe fallback if referenced by order_items: zero out stock instead of violating FK constraint
+                if (orderItemRepository.existsByVariationId(oldVar.getId())) {
+                    // Safe fallback if referenced by order_items: zero out stock instead of deleting
                     oldVar.setStock(0);
                     productVariationRepository.save(oldVar);
+                } else {
+                    productVariationRepository.delete(oldVar);
                 }
             }
         }
@@ -569,7 +568,12 @@ public class SellerController {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "No tienes permiso para borrar este producto");
         }
 
-        try {
+        boolean hasOrders = orderItemRepository.existsByProductId(product.getId());
+        if (hasOrders) {
+            // Soft delete to preserve historical order items without triggering Hibernate exceptions
+            product.setIsactive(false);
+            productRepository.save(product);
+        } else {
             List<ProductVariation> vars = productVariationRepository.findByProductId(product.getId());
             productVariationRepository.deleteAll(vars);
 
@@ -577,10 +581,6 @@ public class SellerController {
             productImageRepository.deleteAll(imgs);
 
             productRepository.delete(product);
-        } catch (Exception e) {
-            // If foreign key constraint violates (e.g. has order items), fallback to soft delete
-            product.setIsactive(false);
-            productRepository.save(product);
         }
 
         return ResponseEntity.ok().build();
