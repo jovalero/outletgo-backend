@@ -39,6 +39,11 @@ public class PushNotificationService {
 
             String jsonPayload = objectMapper.writeValueAsString(payload);
 
+            System.out.println("==================================================");
+            System.out.println("[EXPO-PUSH-HTTP] Enviando HTTP POST a Expo Push API (" + EXPO_PUSH_URL + ")");
+            System.out.println("[EXPO-PUSH-HTTP] Payload: " + jsonPayload);
+            System.out.println("==================================================");
+
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create(EXPO_PUSH_URL))
                     .header("Content-Type", "application/json")
@@ -49,11 +54,10 @@ public class PushNotificationService {
 
             httpClient.sendAsync(request, HttpResponse.BodyHandlers.ofString())
                     .thenAccept(response -> {
-                        if (response.statusCode() != 200) {
-                            System.err.println("Expo Push Notification failed: " + response.body());
-                        } else {
-                            System.out.println("Expo Push Notification sent successfully: " + response.body());
-                        }
+                        System.out.println("==================================================");
+                        System.out.println("[EXPO-PUSH-RESPONSE] Status HTTP: " + response.statusCode());
+                        System.out.println("[EXPO-PUSH-RESPONSE] Respuesta de Expo: " + response.body());
+                        System.out.println("==================================================");
                     });
 
         } catch (Exception e) {

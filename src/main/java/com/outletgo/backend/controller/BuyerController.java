@@ -1687,10 +1687,17 @@ public class BuyerController {
         }
 
         String token = body.get("token");
+        System.out.println("==================================================");
+        System.out.println("[PUSH-TOKEN-REGISTER] HTTP POST /notifications/register llamado por: " + user.getEmail() + " (ID: " + user.getId() + ")");
+        System.out.println("[PUSH-TOKEN-REGISTER] Token recibido en body: " + token);
         if (token != null) {
             user.setPushToken(token.trim());
             userRepository.save(user);
+            System.out.println("[PUSH-TOKEN-REGISTER] Token GUARDADO EXITOSAMENTE en DB para " + user.getEmail());
+        } else {
+            System.out.println("[PUSH-TOKEN-REGISTER] ERROR: Token recibido es NULL");
         }
+        System.out.println("==================================================");
 
         return ResponseEntity.ok().build();
     }
