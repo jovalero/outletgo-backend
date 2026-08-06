@@ -372,6 +372,33 @@ public class SellerController {
         return tags;
     }
 
+    private static final Map<String, Set<String>> CATEGORY_CONFLICT_TAGS = Map.of(
+        "calzado", Set.of("ropa", "remera", "remeras", "abrigos", "abrigo", "campera", "buzo", "accesorios", "gorra", "bolso"),
+        "ropa", Set.of("calzado", "zapatillas", "botas", "abrigos", "campera", "buzo", "accesorios", "gorra", "bolso"),
+        "abrigos", Set.of("calzado", "zapatillas", "botas", "accesorios", "gorra", "bolso"),
+        "accesorios", Set.of("calzado", "zapatillas", "ropa", "remera", "abrigos", "campera", "buzo")
+    );
+
+    private Set<Tag> filterConflictingCategoryTags(Set<Tag> tags, Category category) {
+        if (category == null || category.getName() == null || tags == null) {
+            return tags;
+        }
+        String catNameLower = category.getName().toLowerCase().trim();
+        Set<String> conflicts = CATEGORY_CONFLICT_TAGS.getOrDefault(catNameLower, Set.of());
+        if (conflicts.isEmpty()) {
+            return tags;
+        }
+        Set<Tag> cleanSet = new HashSet<>();
+        for (Tag t : tags) {
+            if (t != null && t.getTagName() != null) {
+                if (!conflicts.contains(t.getTagName().toLowerCase().trim())) {
+                    cleanSet.add(t);
+                }
+            }
+        }
+        return cleanSet;
+    }
+
     @PostMapping("/products")
     public ResponseEntity<SellerProductSaveResult> createSellerProduct(
             @RequestHeader("Authorization") String authHeader,
@@ -381,6 +408,7 @@ public class SellerController {
 
         Category category = resolveCategory(payload.getCategoryId());
         Set<Tag> tags = resolveTags(payload.getTags(), payload.getImageUrls(), payload.getName(), payload.getDescription());
+        tags = filterConflictingCategoryTags(tags, category);
 
         Product product = Product.builder()
                 .name(payload.getName())
@@ -449,6 +477,7 @@ public class SellerController {
         Set<Tag> tags = imagesChanged
                 ? resolveTags(payload.getTags(), newImageUrls, payload.getName(), payload.getDescription())
                 : resolveManualTagsOnly(payload.getTags());
+        tags = filterConflictingCategoryTags(tags, category);
 
         product.setName(payload.getName());
         product.setDescription(payload.getDescription());
