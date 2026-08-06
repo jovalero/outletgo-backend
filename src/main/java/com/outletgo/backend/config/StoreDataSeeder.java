@@ -158,12 +158,16 @@ public class StoreDataSeeder implements CommandLineRunner {
                     for (int r = 0; r < numReviews; r++) {
                         int ratingVal = 3 + random.nextInt(3); // 3 a 5 estrellas
                         totalRating += ratingVal;
+                        List<String> revImages = (r % 2 == 0)
+                            ? List.of(productImages[random.nextInt(productImages.length)], productImages[random.nextInt(productImages.length)])
+                            : List.of();
                         Review rev = Review.builder()
                             .product(product)
                             .store(store)
                             .user(reviewer)
                             .rating(ratingVal)
                             .comment("Muy buen producto, altamente recomendado!")
+                            .imageUrls(revImages)
                             .isVisible(true)
                             .createdAt(LocalDateTime.now().minusDays(random.nextInt(30)))
                             .build();
