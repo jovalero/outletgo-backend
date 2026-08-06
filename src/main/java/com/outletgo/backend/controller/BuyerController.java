@@ -385,7 +385,7 @@ public class BuyerController {
                         .authorName(r.getUser().getEmail().split("@")[0])
                         .createdAt(r.getCreatedAt().toString())
                         .isVisible(r.getIsVisible())
-                        .imageUrls(new ArrayList<>())
+                        .imageUrls(r.getImageUrls() != null ? r.getImageUrls() : new ArrayList<>())
                         .build())
                 .collect(Collectors.toList());
 
@@ -621,10 +621,28 @@ public class BuyerController {
     // 3. CHECKOUT & ORDERS
     // ==========================================
 
+    private double calculateServiceFeeDynamic(double productSubtotal) {
+        List<ServiceFeeRule> activeRules = serviceFeeRuleRepository.findByIsActiveTrue();
+        if (activeRules != null && !activeRules.isEmpty()) {
+            for (ServiceFeeRule rule : activeRules) {
+                double minAmt = rule.getMinOrderAmount() != null ? rule.getMinOrderAmount() : 0.0;
+                if (productSubtotal >= minAmt) {
+                    double val = rule.getFeeValue() != null ? rule.getFeeValue() : 0.0;
+                    String type = rule.getFeeType() != null ? rule.getFeeType().toUpperCase() : "";
+                    if (type.contains("PERCENT") || type.contains("%")) {
+                        return Math.round(productSubtotal * (val / 100.0) * 100.0) / 100.0;
+                    } else {
+                        return val;
+                    }
+                }
+            }
+        }
+        return Math.round(productSubtotal * 0.02 * 100.0) / 100.0;
+    }
+
     @PostMapping("/checkout/summary")
     public ResponseEntity<?> getCheckoutSummary(@RequestBody CheckoutSummaryRequest req) {
-        // Calculate service fee (5% of subtotal, minimum 500)
-        double fee = Math.max(req.getProductSubtotal() * 0.05, 500.0);
+        double fee = calculateServiceFeeDynamic(req.getProductSubtotal());
         double total = req.getProductSubtotal() + req.getQuotedShippingCost() + fee;
 
         CheckoutSummaryDto summary = CheckoutSummaryDto.builder()
@@ -632,7 +650,7 @@ public class BuyerController {
                 .shippingCost(req.getQuotedShippingCost())
                 .serviceFee(fee)
                 .total(total)
-                .serviceFeeLabel("Tarifa de servicio OutletGo (5%)")
+                .serviceFeeLabel("Tarifa de servicio OutletGo (2%)")
                 .build();
         return ResponseEntity.ok(summary);
     }
@@ -665,7 +683,7 @@ public class BuyerController {
             }
         }
         double shippingCost = req.getShipping().getQuotedCost();
-        double serviceFee = Math.max(productSubtotal * 0.05, 500.0);
+        double serviceFee = calculateServiceFeeDynamic(productSubtotal);
         double total = productSubtotal + shippingCost + serviceFee;
 
         // Create Order
@@ -1454,6 +1472,7 @@ public class BuyerController {
                 .referenceType("ORDER")
                 .rating(body.getRating())
                 .comment(body.getComment())
+                .imageUrls(body.getImageUrls() != null ? body.getImageUrls() : new ArrayList<>())
                 .isVisible(true)
                 .createdAt(LocalDateTime.now())
                 .build();
@@ -1821,19 +1840,26 @@ public class BuyerController {
             @RequestParam(required = false) Integer weightGrams) {
 
         List<Map<String, Object>> quotes = new ArrayList<>();
-        Map<String, Object> quote1 = new HashMap<>();
-        quote1.put("carrier", "CORREO_ARGENTINO");
-        quote1.put("cost", 2800.0);
-        quote1.put("estimatedDays", 5);
+        double shippingCost = 1212.0;
 
-        Map<String, Object> quote2 = new HashMap<>();
-        quote2.put("carrier", "ANDREANI");
-        quote2.put("cost", 3900.0);
-        quote2.put("estimatedDays", 3);
+        List<ServiceFeeRule> activeRules = serviceFeeRuleRepository.findByIsActiveTrue();
+        if (activeRules != null) {
+            for (ServiceFeeRule rule : activeRules) {
+                if (rule.getName() != null && rule.getName().toLowerCase().contains("envío")) {
+                    if (rule.getFeeValue() != null && rule.getFeeValue() > 0) {
+                        shippingCost = rule.getFeeValue();
+                        break;
+                    }
+                }
+            }
+        }
+
+        Map<String, Object> quote1 = new HashMap<>();
+        quote1.put("carrier", "REPARTO_PROPIO");
+        quote1.put("cost", shippingCost);
+        quote1.put("estimatedDays", 2);
 
         quotes.add(quote1);
-        quotes.add(quote2);
-
         return ResponseEntity.ok(quotes);
     }
 
@@ -2196,6 +2222,7 @@ public class BuyerController {
         private UUID storeId;
         private Integer rating;
         private String comment;
+        private List<String> imageUrls;
     }
 
     @Data
