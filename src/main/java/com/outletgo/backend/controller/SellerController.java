@@ -977,13 +977,17 @@ public class SellerController {
                     ChatMessage last = msgs.get(msgs.size() - 1);
                     User buyer = last.getSender().getRole() == User.Role.CLIENT ? last.getSender() : last.getReceiver();
 
+                    long unreadCount = msgs.stream()
+                            .filter(m -> m.getReceiver() != null && m.getReceiver().getId().equals(store.getUser().getId()) && !Boolean.TRUE.equals(m.getIsRead()))
+                            .count();
+
                     Map<String, Object> map = new HashMap<>();
                     map.put("id", convId.toString());
                     map.put("buyerName", buyer.getEmail().split("@")[0]);
                     map.put("buyerEmail", buyer.getEmail());
                     map.put("lastMessagePreview", last.getContent());
                     map.put("lastMessageAt", last.getSentAt().toString());
-                    map.put("unreadCount", 0);
+                    map.put("unreadCount", (int) unreadCount);
                     return map;
                 })
                 .sorted((m1, m2) -> ((String) m2.get("lastMessageAt")).compareTo((String) m1.get("lastMessageAt")))
@@ -996,15 +1000,26 @@ public class SellerController {
         return ResponseEntity.ok(new PageImpl<>(paginated, PageRequest.of(page, size), list.size()));
     }
 
+    @Transactional
     @GetMapping("/chats/{conversationId}/messages")
     public ResponseEntity<?> getSellerChatMessages(
-            @RequestHeader("Authorization") String authHeader,
+            @RequestHeader(value = "Authorization", required = false) String authHeader,
             @PathVariable UUID conversationId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "100") int size) {
 
         Store store = getAuthenticatedStore(authHeader);
         List<ChatMessage> messages = chatMessageRepository.findByConversationIdOrderBySentAtAsc(conversationId);
+
+        // Marcar mensajes no leídos dirigidos a la tienda como LEÍDOS (isRead = true)
+        List<ChatMessage> unreadToMark = messages.stream()
+                .filter(m -> m.getReceiver() != null && m.getReceiver().getId().equals(store.getUser().getId()) && !Boolean.TRUE.equals(m.getIsRead()))
+                .peek(m -> m.setIsRead(true))
+                .collect(Collectors.toList());
+
+        if (!unreadToMark.isEmpty()) {
+            chatMessageRepository.saveAllAndFlush(unreadToMark);
+        }
 
         List<Map<String, Object>> mapped = messages.stream()
                 .map(m -> {

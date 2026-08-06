@@ -989,6 +989,10 @@ public class BuyerController {
                     ChatMessage last = msgs.get(msgs.size() - 1);
                     Store store = last.getStore();
 
+                    long unreadCount = msgs.stream()
+                            .filter(m -> m.getReceiver() != null && m.getReceiver().getId().equals(user.getId()) && !Boolean.TRUE.equals(m.getIsRead()))
+                            .count();
+
                     return ConversationListItemDto.builder()
                             .id(convId)
                             .storeId(store.getId())
@@ -998,7 +1002,7 @@ public class BuyerController {
                             .productName(null)
                             .lastMessagePreview(last.getContent())
                             .lastMessageAt(last.getSentAt().toString())
-                            .unreadCount(0)
+                            .unreadCount((int) unreadCount)
                             .build();
                 })
                 .sorted(Comparator.comparing(ConversationListItemDto::getLastMessageAt).reversed())
@@ -1030,6 +1034,10 @@ public class BuyerController {
         ChatMessage first = messages.get(0);
         Store store = first.getStore();
 
+        long unreadCount = messages.stream()
+                .filter(m -> m.getReceiver() != null && m.getReceiver().getId().equals(user.getId()) && !Boolean.TRUE.equals(m.getIsRead()))
+                .count();
+
         ConversationDetailDto dto = ConversationDetailDto.builder()
                 .id(conversationId)
                 .storeId(store.getId())
@@ -1039,15 +1047,16 @@ public class BuyerController {
                 .productName(null)
                 .lastMessagePreview(messages.get(messages.size() - 1).getContent())
                 .lastMessageAt(messages.get(messages.size() - 1).getSentAt().toString())
-                .unreadCount(0)
+                .unreadCount((int) unreadCount)
                 .build();
 
         return ResponseEntity.ok(dto);
     }
 
+    @Transactional
     @GetMapping("/conversations/{conversationId}/messages")
     public ResponseEntity<?> getConversationMessages(
-            @RequestHeader("Authorization") String authHeader,
+            @RequestHeader(value = "Authorization", required = false) String authHeader,
             @PathVariable UUID conversationId) {
 
         User user = getAuthenticatedUser(authHeader);
@@ -1056,6 +1065,16 @@ public class BuyerController {
         }
 
         List<ChatMessage> messages = chatMessageRepository.findByConversationIdOrderBySentAtAsc(conversationId);
+
+        // Marcar mensajes no leídos dirigidos a este comprador como LEÍDOS (isRead = true)
+        List<ChatMessage> unreadToMark = messages.stream()
+                .filter(m -> m.getReceiver() != null && m.getReceiver().getId().equals(user.getId()) && !Boolean.TRUE.equals(m.getIsRead()))
+                .peek(m -> m.setIsRead(true))
+                .collect(Collectors.toList());
+
+        if (!unreadToMark.isEmpty()) {
+            chatMessageRepository.saveAllAndFlush(unreadToMark);
+        }
         List<ChatMessageDto> dtos = messages.stream()
                 .map(m -> ChatMessageDto.builder()
                         .id(m.getId())

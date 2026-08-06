@@ -46,6 +46,10 @@ public class ChatMessage {
     @Column(name = "sent_at", nullable = false)
     private LocalDateTime sentAt = LocalDateTime.now();
 
+    @Column(name = "is_read")
+    @Builder.Default
+    private Boolean isRead = false;
+
     @PrePersist
     protected void onCreate() {
         if (sentAt == null) {
