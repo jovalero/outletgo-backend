@@ -1679,11 +1679,14 @@ public class BuyerController {
     @Transactional
     @PostMapping({"/me/push-token", "/notifications/register"})
     public ResponseEntity<Void> updatePushToken(
-            @RequestHeader("Authorization") String authHeader,
+            @RequestHeader(value = "Authorization", required = false) String authHeader,
             @RequestBody Map<String, String> body) {
 
         User user = getAuthenticatedUser(authHeader);
         if (user == null) {
+            System.out.println("==================================================");
+            System.out.println("[PUSH-TOKEN-REGISTER] ERROR 401: Solicitud recibida sin Token Authorization válido.");
+            System.out.println("==================================================");
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "No autorizado");
         }
 

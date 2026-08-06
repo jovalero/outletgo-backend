@@ -103,12 +103,17 @@ public class GlobalExceptionHandler {
     // Handle any other general runtime exception
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Map<String, Object>> handleGeneralException(Exception ex) {
-        log.error("=== UNHANDLED EXCEPTION ===", ex);
+        System.out.println("==================================================");
+        System.out.println("[UNHANDLED-EXCEPTION] Clase: " + ex.getClass().getName());
+        System.out.println("[UNHANDLED-EXCEPTION] Mensaje: " + ex.getMessage());
+        System.out.println("==================================================");
+        log.error("=== UNHANDLED EXCEPTION [" + ex.getClass().getName() + "] ===", ex);
         Map<String, Object> body = new HashMap<>();
         body.put("timestamp", LocalDateTime.now());
         body.put("status", HttpStatus.INTERNAL_SERVER_ERROR.value());
         body.put("error", "Internal Server Error");
         body.put("message", ex.getMessage());
+        body.put("exceptionClass", ex.getClass().getName());
         return new ResponseEntity<>(body, HttpStatus.INTERNAL_SERVER_ERROR);
     }
 }
