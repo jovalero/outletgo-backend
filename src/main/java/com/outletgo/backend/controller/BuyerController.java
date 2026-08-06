@@ -1266,6 +1266,9 @@ public class BuyerController {
             map.put("address", s.getAddress());
             map.put("ratingAvg", s.getRatingAvg());
             map.put("ratingCount", s.getRatingCount());
+            String imgUrl = s.getHeaderImage() != null ? s.getHeaderImage() : (s.getUser() != null ? s.getUser().getAvatarUrl() : null);
+            map.put("imageUrl", imgUrl);
+            map.put("logoUrl", imgUrl);
             map.put("addedAt", LocalDateTime.now().toString());
             return map;
         }).collect(Collectors.toList());
