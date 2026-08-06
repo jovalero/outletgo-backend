@@ -1054,15 +1054,15 @@ public class SellerController {
                         .findFirst()
                         .orElse(null));
 
+        String pushToken = null;
         if (buyer != null && buyer.getId() != null) {
-            // Re-obtener desde BD para garantizar que tengamos el push_token fresco y no un objeto cacheado en stale estado
-            buyer = userRepository.findById(buyer.getId()).orElse(buyer);
+            pushToken = userRepository.findPushTokenByUserId(buyer.getId());
         }
 
         System.out.println("==================================================");
         System.out.println("[SELLER-CHAT-SEND] Mensaje enviado por Tienda: " + store.getBusinessName());
         System.out.println("[SELLER-CHAT-SEND] Comprador identificado: " + (buyer != null ? buyer.getEmail() + " (ID: " + buyer.getId() + ")" : "NINGUNO"));
-        System.out.println("[SELLER-CHAT-SEND] push_token en DB para comprador: " + (buyer != null ? buyer.getPushToken() : "N/A"));
+        System.out.println("[SELLER-CHAT-SEND] push_token directo de PostgreSQL: " + (pushToken != null ? pushToken : "NULL"));
         System.out.println("==================================================");
 
         ChatMessage newMsg = ChatMessage.builder()
@@ -1077,8 +1077,8 @@ public class SellerController {
         ChatMessage saved = chatMessageRepository.save(newMsg);
 
         // Enviar notificación Push al comprador (si tiene pushToken configurado)
-        if (buyer != null && buyer.getPushToken() != null && !buyer.getPushToken().trim().isEmpty()) {
-            System.out.println("[SELLER-CHAT-SEND] Disparando PushNotificationService a token: " + buyer.getPushToken());
+        if (pushToken != null && !pushToken.trim().isEmpty()) {
+            System.out.println("[SELLER-CHAT-SEND] Disparando PushNotificationService a token: " + pushToken);
             String title = store != null ? store.getBusinessName() : "Nuevo mensaje";
             String bodyText = saved.getContent() != null && !saved.getContent().isEmpty() 
                     ? saved.getContent() 
@@ -1086,9 +1086,9 @@ public class SellerController {
             Map<String, Object> data = new HashMap<>();
             data.put("type", "CHAT_MESSAGE");
             data.put("conversationId", conversationId.toString());
-            pushNotificationService.sendPushNotification(buyer.getPushToken(), title, bodyText, data);
+            pushNotificationService.sendPushNotification(pushToken, title, bodyText, data);
         } else {
-            System.out.println("[SELLER-CHAT-SEND] ADVERTENCIA: No se envió PushNotification porque el comprador " + (buyer != null ? buyer.getEmail() : "null") + " tiene push_token nulo o vacío.");
+            System.out.println("[SELLER-CHAT-SEND] ADVERTENCIA: No se envió PushNotification porque el comprador " + (buyer != null ? buyer.getEmail() : "null") + " tiene push_token nulo o vacío en PostgreSQL.");
         }
 
         Map<String, Object> res = new HashMap<>();

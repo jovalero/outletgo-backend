@@ -1676,6 +1676,7 @@ public class BuyerController {
         return ResponseEntity.ok(userDto);
     }
 
+    @Transactional
     @PostMapping({"/me/push-token", "/notifications/register"})
     public ResponseEntity<Void> updatePushToken(
             @RequestHeader("Authorization") String authHeader,
@@ -1690,12 +1691,12 @@ public class BuyerController {
         System.out.println("==================================================");
         System.out.println("[PUSH-TOKEN-REGISTER] HTTP POST /notifications/register llamado por: " + user.getEmail() + " (ID: " + user.getId() + ")");
         System.out.println("[PUSH-TOKEN-REGISTER] Token recibido en body: " + token);
-        if (token != null) {
+        if (token != null && !token.trim().isEmpty()) {
             user.setPushToken(token.trim());
-            userRepository.save(user);
-            System.out.println("[PUSH-TOKEN-REGISTER] Token GUARDADO EXITOSAMENTE en DB para " + user.getEmail());
+            userRepository.saveAndFlush(user);
+            System.out.println("[PUSH-TOKEN-REGISTER] Token GUARDADO Y FLUSHEADOS EN DB para " + user.getEmail() + " -> " + token.trim());
         } else {
-            System.out.println("[PUSH-TOKEN-REGISTER] ERROR: Token recibido es NULL");
+            System.out.println("[PUSH-TOKEN-REGISTER] ERROR: Token recibido es NULL o vacío");
         }
         System.out.println("==================================================");
 
