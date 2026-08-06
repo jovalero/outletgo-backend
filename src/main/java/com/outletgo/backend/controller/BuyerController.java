@@ -1873,11 +1873,6 @@ public class BuyerController {
         return ResponseEntity.ok(tracking);
     }
 
-    @PostMapping("/notifications/register")
-    public ResponseEntity<Void> registerNotifications() {
-        return ResponseEntity.ok().build();
-    }
-
     @DeleteMapping("/notifications/register")
     public ResponseEntity<Void> unregisterNotifications() {
         return ResponseEntity.ok().build();
