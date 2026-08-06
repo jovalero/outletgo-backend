@@ -25,6 +25,9 @@ import com.mercadopago.client.preference.*;
 import com.mercadopago.resources.preference.Preference;
 
 import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -529,6 +532,70 @@ public class BuyerController {
         return getCatalogProducts(categoryId, storeId, name, minPrice, maxPrice, sizeFilter, null, null, null, page, String.valueOf(size));
     }
 
+    private List<StoreScheduleDto> buildStoreScheduleDtos(UUID storeId) {
+        if (storeId == null) return new ArrayList<>();
+        List<StoreSchedule> dbSchedules = storeScheduleRepository.findByStoreIdOrderByDayOfWeekAsc(storeId);
+        List<StoreScheduleDto> schedule = new ArrayList<>();
+
+        if (dbSchedules == null || dbSchedules.isEmpty()) {
+            for (int i = 1; i <= 6; i++) {
+                schedule.add(StoreScheduleDto.builder()
+                        .dayOfWeek(i)
+                        .isOpen(true)
+                        .openTime("09:00")
+                        .closeTime("19:00")
+                        .build());
+            }
+            schedule.add(StoreScheduleDto.builder()
+                    .dayOfWeek(7)
+                    .isOpen(false)
+                    .openTime(null)
+                    .closeTime(null)
+                    .build());
+        } else {
+            for (StoreSchedule s : dbSchedules) {
+                schedule.add(StoreScheduleDto.builder()
+                        .dayOfWeek(s.getDayOfWeek())
+                        .isOpen(Boolean.TRUE.equals(s.getIsOpen()))
+                        .openTime(s.getOpenTime())
+                        .closeTime(s.getCloseTime())
+                        .build());
+            }
+        }
+        return schedule;
+    }
+
+    private boolean isStoreOpenNow(UUID storeId) {
+        if (storeId == null) return false;
+        List<StoreScheduleDto> schedules = buildStoreScheduleDtos(storeId);
+
+        ZoneId zoneId = ZoneId.of("America/Argentina/Buenos_Aires");
+        ZonedDateTime now = ZonedDateTime.now(zoneId);
+        int currentDayOfWeek = now.getDayOfWeek().getValue(); // 1 = Lunes ... 7 = Domingo
+        LocalTime currentTime = now.toLocalTime();
+
+        StoreScheduleDto today = schedules.stream()
+                .filter(s -> s.getDayOfWeek() != null && s.getDayOfWeek() == currentDayOfWeek)
+                .findFirst()
+                .orElse(null);
+
+        if (today == null || !Boolean.TRUE.equals(today.getIsOpen())) {
+            return false;
+        }
+
+        if (today.getOpenTime() == null || today.getCloseTime() == null) {
+            return false;
+        }
+
+        try {
+            LocalTime open = LocalTime.parse(today.getOpenTime().trim());
+            LocalTime close = LocalTime.parse(today.getCloseTime().trim());
+            return !currentTime.isBefore(open) && currentTime.isBefore(close);
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
     @GetMapping("/stores/nearby")
     public ResponseEntity<?> getNearbyStores(
             @RequestParam Double latitude,
@@ -538,7 +605,7 @@ public class BuyerController {
 
         List<Store> stores = storeRepository.findAll();
         List<NearbyStoreDto> dtos = stores.stream()
-                .filter(s -> s.getUser().getIsactive())
+                .filter(s -> s.getUser() != null && Boolean.TRUE.equals(s.getUser().getIsactive()))
                 .map(s -> {
                     Double dist = null;
                     Double storeLat = null;
@@ -552,6 +619,9 @@ public class BuyerController {
                         } catch (Exception e) {}
                     }
 
+                    List<StoreScheduleDto> schedDtos = buildStoreScheduleDtos(s.getId());
+                    boolean isOpen = isStoreOpenNow(s.getId());
+
                     return NearbyStoreDto.builder()
                             .id(s.getId())
                             .name(s.getBusinessName())
@@ -561,12 +631,14 @@ public class BuyerController {
                             .ratingAvg(s.getRatingAvg())
                             .ratingCount(s.getRatingCount())
                             .distanceKm(dist)
-                            .isOpenNow(true)
+                            .isOpenNow(isOpen)
                             .shippingCapability("AMBOS")
+                            .schedule(schedDtos)
                             .build();
                 })
                 .filter(dto -> dto.getDistanceKm() != null)
                 .filter(dto -> radiusKm == null || dto.getDistanceKm() <= radiusKm)
+                .filter(dto -> openNow == null || !openNow || Boolean.TRUE.equals(dto.getIsOpenNow()))
                 .sorted(Comparator.comparing(NearbyStoreDto::getDistanceKm))
                 .collect(Collectors.toList());
 
@@ -582,7 +654,7 @@ public class BuyerController {
         List<Store> stores = storeRepository.findAll();
         String searchLower = name.trim().toLowerCase();
         List<NearbyStoreDto> dtos = stores.stream()
-                .filter(s -> s.getUser().getIsactive() && s.getBusinessName().toLowerCase().contains(searchLower))
+                .filter(s -> s.getUser() != null && Boolean.TRUE.equals(s.getUser().getIsactive()) && s.getBusinessName().toLowerCase().contains(searchLower))
                 .map(s -> {
                     Double dist = null;
                     Double storeLat = null;
@@ -598,6 +670,9 @@ public class BuyerController {
                         } catch (Exception e) {}
                     }
 
+                    List<StoreScheduleDto> schedDtos = buildStoreScheduleDtos(s.getId());
+                    boolean isOpen = isStoreOpenNow(s.getId());
+
                     return NearbyStoreDto.builder()
                             .id(s.getId())
                             .name(s.getBusinessName())
@@ -607,8 +682,9 @@ public class BuyerController {
                             .ratingAvg(s.getRatingAvg())
                             .ratingCount(s.getRatingCount())
                             .distanceKm(dist)
-                            .isOpenNow(true)
+                            .isOpenNow(isOpen)
                             .shippingCapability("AMBOS")
+                            .schedule(schedDtos)
                             .build();
                 })
                 .sorted(Comparator.comparing(dto -> dto.getDistanceKm() != null ? dto.getDistanceKm() : Double.MAX_VALUE))
@@ -2046,6 +2122,7 @@ public class BuyerController {
         private Double distanceKm;
         private Boolean isOpenNow;
         private String shippingCapability;
+        private List<StoreScheduleDto> schedule;
     }
 
     @Data
