@@ -665,6 +665,81 @@ public class SellerController {
         return ResponseEntity.ok(mapToSellerOrderStoreResponse(slice));
     }
 
+    @PostMapping("/orders/{id}/advance")
+    public ResponseEntity<SellerOrderStoreResponse> advanceSellerOrder(
+            @RequestHeader(value = "Authorization", required = false) String authHeader,
+            @PathVariable UUID id) {
+
+        Store store = getAuthenticatedStore(authHeader);
+        OrderStore slice = orderStoreRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Pedido no encontrado"));
+
+        if (!slice.getStore().getId().equals(store.getId())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "No tienes permiso para modificar este pedido");
+        }
+
+        Order.OrderStatus currentStatus = slice.getStatus();
+        Order.OrderStatus nextStatus = null;
+
+        if (currentStatus == Order.OrderStatus.PAID) {
+            nextStatus = Order.OrderStatus.PREPARING;
+        } else if (currentStatus == Order.OrderStatus.PREPARING) {
+            nextStatus = Order.OrderStatus.READY_FOR_PICKUP;
+        } else {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Este pedido no admite avanzar de estado desde el panel");
+        }
+
+        slice.setStatus(nextStatus);
+        orderStoreRepository.save(slice);
+
+        // Re-evaluar estado de la orden principal (Order)
+        Order parentOrder = slice.getOrder();
+        if (parentOrder != null) {
+            List<OrderStore> allSlices = orderStoreRepository.findByOrderId(parentOrder.getId());
+            boolean allReady = !allSlices.isEmpty() && allSlices.stream()
+                    .allMatch(s -> s.getStatus() == Order.OrderStatus.READY_FOR_PICKUP 
+                                || s.getStatus() == Order.OrderStatus.CANCELED 
+                                || s.getStatus() == Order.OrderStatus.CANCELLED);
+
+            if (nextStatus == Order.OrderStatus.PREPARING && parentOrder.getStatus() == Order.OrderStatus.PAID) {
+                parentOrder.setStatus(Order.OrderStatus.PREPARING);
+                orderRepository.save(parentOrder);
+            } else if (allReady && (parentOrder.getStatus() == Order.OrderStatus.PREPARING || parentOrder.getStatus() == Order.OrderStatus.PAID)) {
+                parentOrder.setStatus(Order.OrderStatus.READY_FOR_PICKUP);
+                orderRepository.save(parentOrder);
+            }
+        }
+
+        return ResponseEntity.ok(mapToSellerOrderStoreResponse(slice));
+    }
+
+    @PostMapping("/orders/{id}/items/{itemId}/stock-issue")
+    public ResponseEntity<SellerOrderStoreResponse> reportItemStockIssue(
+            @RequestHeader(value = "Authorization", required = false) String authHeader,
+            @PathVariable UUID id,
+            @PathVariable UUID itemId,
+            @RequestBody(required = false) Map<String, Integer> body) {
+
+        Store store = getAuthenticatedStore(authHeader);
+        OrderStore slice = orderStoreRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Pedido no encontrado"));
+
+        if (!slice.getStore().getId().equals(store.getId())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "No tienes permiso para modificar este pedido");
+        }
+
+        slice.setStatus(Order.OrderStatus.STOCK_ISSUE);
+        orderStoreRepository.save(slice);
+
+        Order parentOrder = slice.getOrder();
+        if (parentOrder != null) {
+            parentOrder.setStatus(Order.OrderStatus.STOCK_ISSUE);
+            orderRepository.save(parentOrder);
+        }
+
+        return ResponseEntity.ok(mapToSellerOrderStoreResponse(slice));
+    }
+
     private SellerOrderStoreResponse mapToSellerOrderStoreResponse(OrderStore slice) {
         Order order = slice.getOrder();
         List<OrderItem> items = orderItemRepository.findByOrderStoreId(slice.getId());
