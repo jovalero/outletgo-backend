@@ -1083,12 +1083,39 @@ public class AdminController {
             @RequestBody UpdateOrderStatusRequest body) {
         Order order = orderRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Orden no encontrada"));
+        Order.OrderStatus newStatus;
         try {
-            order.setStatus(Order.OrderStatus.valueOf(body.getStatus().toUpperCase()));
+            newStatus = Order.OrderStatus.valueOf(body.getStatus().toUpperCase());
+            order.setStatus(newStatus);
         } catch (Exception e) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Estado de orden inválido");
         }
         orderRepository.save(order);
+
+        // Synchronize OrderStore slices
+        List<OrderStore> slices = orderStoreRepository.findByOrderId(order.getId());
+        for (OrderStore slice : slices) {
+            boolean isCanceled = slice.getStatus() == Order.OrderStatus.CANCELED || slice.getStatus() == Order.OrderStatus.CANCELLED;
+            if (newStatus == Order.OrderStatus.CANCELED || newStatus == Order.OrderStatus.CANCELLED) {
+                if (!isCanceled) {
+                    slice.setStatus(Order.OrderStatus.CANCELLED);
+                    orderStoreRepository.save(slice);
+                    // Restore stock for items
+                    List<OrderItem> items = orderItemRepository.findByOrderStoreId(slice.getId());
+                    for (OrderItem item : items) {
+                        if (item.getVariation() != null) {
+                            ProductVariation variation = item.getVariation();
+                            variation.setStock(variation.getStock() + item.getQuantity());
+                            productVariationRepository.save(variation);
+                        }
+                    }
+                }
+            } else if (!isCanceled) {
+                slice.setStatus(newStatus);
+                orderStoreRepository.save(slice);
+            }
+        }
+
         return ResponseEntity.ok(mapToAdminOrderResponse(order));
     }
 
@@ -1100,13 +1127,42 @@ public class AdminController {
         OrderStore slice = orderStoreRepository.findById(sliceId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Slice de orden no encontrado"));
 
+        Order.OrderStatus newStatus;
         try {
-            slice.setStatus(Order.OrderStatus.valueOf(body.getStatus().toUpperCase()));
+            newStatus = Order.OrderStatus.valueOf(body.getStatus().toUpperCase());
+            slice.setStatus(newStatus);
         } catch (Exception e) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Estado inválido");
         }
 
         orderStoreRepository.save(slice);
+
+        // Re-evaluate parent order status based on slices
+        Order order = slice.getOrder();
+        if (order != null) {
+            List<OrderStore> allSlices = orderStoreRepository.findByOrderId(order.getId());
+            boolean allCanceled = !allSlices.isEmpty() && allSlices.stream().allMatch(s -> s.getStatus() == Order.OrderStatus.CANCELED || s.getStatus() == Order.OrderStatus.CANCELLED);
+            boolean anyStockIssue = allSlices.stream().anyMatch(s -> s.getStatus() == Order.OrderStatus.STOCK_ISSUE);
+            boolean allReady = !allSlices.isEmpty() && allSlices.stream().allMatch(s -> s.getStatus() == Order.OrderStatus.READY_FOR_PICKUP || s.getStatus() == Order.OrderStatus.CANCELED || s.getStatus() == Order.OrderStatus.CANCELLED);
+
+            if (allCanceled) {
+                order.setStatus(Order.OrderStatus.CANCELLED);
+                orderRepository.save(order);
+            } else if (anyStockIssue) {
+                order.setStatus(Order.OrderStatus.STOCK_ISSUE);
+                orderRepository.save(order);
+            } else if (allReady && order.getStatus() == Order.OrderStatus.PREPARING) {
+                order.setStatus(Order.OrderStatus.READY_FOR_PICKUP);
+                orderRepository.save(order);
+            } else if (newStatus == Order.OrderStatus.PAID && order.getStatus() == Order.OrderStatus.PENDING) {
+                order.setStatus(Order.OrderStatus.PAID);
+                orderRepository.save(order);
+            } else if (newStatus == Order.OrderStatus.PREPARING && order.getStatus() == Order.OrderStatus.PAID) {
+                order.setStatus(Order.OrderStatus.PREPARING);
+                orderRepository.save(order);
+            }
+        }
+
         return ResponseEntity.ok(mapToAdminOrderStoreResponse(slice));
     }
 
@@ -1222,13 +1278,26 @@ public class AdminController {
 
                     List<AdminOrderResponse.AdminOrderStoreDto.LineItemDto> itemDtos = items.stream()
                             .map(item -> {
-                                String imgUrl = productImageRepository.findByProductId(item.getVariation().getProduct().getId())
-                                        .stream().findFirst().map(ProductImage::getImageUrl).orElse(null);
+                                String imgUrl = null;
+                                String productName = "Producto";
+                                String size = null;
+                                String color = null;
+                                if (item.getVariation() != null) {
+                                    size = item.getVariation().getSize();
+                                    color = item.getVariation().getColor();
+                                    if (item.getVariation().getProduct() != null) {
+                                        productName = item.getVariation().getProduct().getName();
+                                        List<ProductImage> imgs = productImageRepository.findByProductId(item.getVariation().getProduct().getId());
+                                        if (imgs != null && !imgs.isEmpty()) {
+                                            imgUrl = imgs.get(0).getImageUrl();
+                                        }
+                                    }
+                                }
                                 return AdminOrderResponse.AdminOrderStoreDto.LineItemDto.builder()
                                         .id(item.getId())
-                                        .productName(item.getVariation().getProduct().getName())
-                                        .size(item.getVariation().getSize())
-                                        .color(item.getVariation().getColor())
+                                        .productName(productName)
+                                        .size(size)
+                                        .color(color)
                                         .quantity(item.getQuantity())
                                         .unitPrice(item.getUnitPrice())
                                         .imageUrl(imgUrl)
@@ -1295,13 +1364,26 @@ public class AdminController {
         List<OrderItem> items = orderItemRepository.findByOrderStoreId(slice.getId());
         List<AdminOrderStoreResponse.LineItemDto> itemDtos = items.stream()
                 .map(item -> {
-                    String imgUrl = productImageRepository.findByProductId(item.getVariation().getProduct().getId())
-                            .stream().findFirst().map(ProductImage::getImageUrl).orElse(null);
+                    String imgUrl = null;
+                    String productName = "Producto";
+                    String size = null;
+                    String color = null;
+                    if (item.getVariation() != null) {
+                        size = item.getVariation().getSize();
+                        color = item.getVariation().getColor();
+                        if (item.getVariation().getProduct() != null) {
+                            productName = item.getVariation().getProduct().getName();
+                            List<ProductImage> imgs = productImageRepository.findByProductId(item.getVariation().getProduct().getId());
+                            if (imgs != null && !imgs.isEmpty()) {
+                                imgUrl = imgs.get(0).getImageUrl();
+                            }
+                        }
+                    }
                     return AdminOrderStoreResponse.LineItemDto.builder()
                             .id(item.getId())
-                            .productName(item.getVariation().getProduct().getName())
-                            .size(item.getVariation().getSize())
-                            .color(item.getVariation().getColor())
+                            .productName(productName)
+                            .size(size)
+                            .color(color)
                             .quantity(item.getQuantity())
                             .unitPrice(item.getUnitPrice())
                             .imageUrl(imgUrl)

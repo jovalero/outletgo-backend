@@ -26,6 +26,7 @@ public class StoreDataSeeder implements CommandLineRunner {
     private final ProductImageRepository productImageRepository;
     private final ProductVariationRepository productVariationRepository;
     private final ReviewRepository reviewRepository;
+    private final StoreScheduleRepository storeScheduleRepository;
     private final PasswordEncoder passwordEncoder;
 
     @Override
@@ -118,6 +119,24 @@ public class StoreDataSeeder implements CommandLineRunner {
                     .ratingCount(0)
                     .build();
                 storeRepository.save(store);
+
+                // Crear horarios semanales para la tienda
+                String[] dayNames = {"LUNES", "MARTES", "MIÉRCOLES", "JUEVES", "VIERNES", "SÁBADO", "DOMINGO"};
+                String openTime = i % 2 == 0 ? "09:00" : "10:00";
+                String closeTime = i % 2 == 0 ? "19:00" : "20:00";
+                for (int day = 1; day <= 7; day++) {
+                    boolean isOpenDay = day <= 6; // Lunes a Sábado abiertas, Domingo cerrado por defecto
+                    if (i == 4 && day == 7) isOpenDay = true; // Tienda 4 abre domingos 10:00-16:00
+                    StoreSchedule schedule = StoreSchedule.builder()
+                        .store(store)
+                        .dayOfWeek(day)
+                        .dayName(dayNames[day - 1])
+                        .isOpen(isOpenDay)
+                        .openTime(isOpenDay ? (day == 7 ? "10:00" : openTime) : null)
+                        .closeTime(isOpenDay ? (day == 7 ? "16:00" : closeTime) : null)
+                        .build();
+                    storeScheduleRepository.save(schedule);
+                }
 
                 // Crear 5 productos para esta tienda
                 for (int j = 0; j < 5; j++) {

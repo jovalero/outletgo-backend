@@ -22,7 +22,7 @@ public interface OrderRepository extends JpaRepository<Order, UUID> {
            "WHERE " +
            "(:searchId IS NULL OR o.id = :searchId) AND " +
            "(:search IS NULL OR LOWER(o.client.email) LIKE :search OR LOWER(o.shippingAddress) LIKE :search OR LOWER(os.store.businessName) LIKE :search) AND " +
-           "(:status IS NULL OR os.status = :status) AND " +
+           "(:status IS NULL OR o.status = :status OR os.status = :status) AND " +
            "(:storeId IS NULL OR os.store.id = :storeId) AND " +
            "(CAST(:startDate AS timestamp) IS NULL OR o.orderDate >= :startDate) AND " +
            "(CAST(:endDate AS timestamp) IS NULL OR o.orderDate <= :endDate)")
