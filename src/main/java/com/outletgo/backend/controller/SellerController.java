@@ -874,13 +874,18 @@ public class SellerController {
             List<Review> pagedReviews = reviews.subList(start, end);
 
             List<SellerReviewResponse> content = pagedReviews.stream()
-                    .map(r -> SellerReviewResponse.builder()
-                            .id(r.getId() != null ? r.getId().toString() : "")
-                            .authorDisplayName(r.getUser() != null && r.getUser().getEmail() != null ? r.getUser().getEmail().split("@")[0] : "Cliente")
-                            .rating(r.getRating() != null ? r.getRating() : 0)
-                            .comment(r.getComment() != null ? r.getComment() : "")
-                            .createdAt(r.getCreatedAt() != null ? r.getCreatedAt().toString() : "")
-                            .build())
+                    .map(r -> {
+                        String name = r.getUser() != null && r.getUser().getEmail() != null ? r.getUser().getEmail().split("@")[0] : "Cliente";
+                        return SellerReviewResponse.builder()
+                                .id(r.getId() != null ? r.getId().toString() : "")
+                                .authorDisplayName(name)
+                                .authorName(name)
+                                .storeId(store.getId() != null ? store.getId().toString() : "")
+                                .rating(r.getRating() != null ? r.getRating() : 0)
+                                .comment(r.getComment() != null ? r.getComment() : "")
+                                .createdAt(r.getCreatedAt() != null ? r.getCreatedAt().toString() : "")
+                                .build();
+                    })
                     .collect(Collectors.toList());
 
             return ResponseEntity.ok(new PageImpl<>(content, PageRequest.of(page, size), reviews.size()));
@@ -922,15 +927,20 @@ public class SellerController {
             List<Review> pagedReviews = reviews.subList(start, end);
 
             List<SellerProductReviewResponse> content = pagedReviews.stream()
-                    .map(r -> SellerProductReviewResponse.builder()
-                            .id(r.getId() != null ? r.getId().toString() : "")
-                            .authorDisplayName(r.getUser() != null && r.getUser().getEmail() != null ? r.getUser().getEmail().split("@")[0] : "Cliente")
-                            .rating(r.getRating() != null ? r.getRating() : 0)
-                            .comment(r.getComment() != null ? r.getComment() : "")
-                            .createdAt(r.getCreatedAt() != null ? r.getCreatedAt().toString() : "")
-                            .productId(r.getProduct() != null && r.getProduct().getId() != null ? r.getProduct().getId().toString() : "")
-                            .productName(r.getProduct() != null && r.getProduct().getName() != null ? r.getProduct().getName() : "")
-                            .build())
+                    .map(r -> {
+                        String name = r.getUser() != null && r.getUser().getEmail() != null ? r.getUser().getEmail().split("@")[0] : "Cliente";
+                        return SellerProductReviewResponse.builder()
+                                .id(r.getId() != null ? r.getId().toString() : "")
+                                .authorDisplayName(name)
+                                .authorName(name)
+                                .storeId(store.getId() != null ? store.getId().toString() : "")
+                                .rating(r.getRating() != null ? r.getRating() : 0)
+                                .comment(r.getComment() != null ? r.getComment() : "")
+                                .createdAt(r.getCreatedAt() != null ? r.getCreatedAt().toString() : "")
+                                .productId(r.getProduct() != null && r.getProduct().getId() != null ? r.getProduct().getId().toString() : "")
+                                .productName(r.getProduct() != null && r.getProduct().getName() != null ? r.getProduct().getName() : "")
+                                .build();
+                    })
                     .collect(Collectors.toList());
 
             return ResponseEntity.ok(new PageImpl<>(content, PageRequest.of(page, size), reviews.size()));
@@ -1293,6 +1303,8 @@ public class SellerController {
     public static class SellerReviewResponse {
         private String id;
         private String authorDisplayName;
+        private String authorName;
+        private String storeId;
         private int rating;
         private String comment;
         private String createdAt;
@@ -1303,6 +1315,8 @@ public class SellerController {
     public static class SellerProductReviewResponse {
         private String id;
         private String authorDisplayName;
+        private String authorName;
+        private String storeId;
         private int rating;
         private String comment;
         private String createdAt;
