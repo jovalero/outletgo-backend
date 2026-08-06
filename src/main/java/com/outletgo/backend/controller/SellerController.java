@@ -1042,8 +1042,22 @@ public class SellerController {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Conversación no encontrada");
         }
 
-        ChatMessage reference = prev.get(0);
-        User buyer = reference.getSender().getId().equals(store.getUser().getId()) ? reference.getReceiver() : reference.getSender();
+        // Encontrar al Comprador buscando en los mensajes de la conversación al usuario distinto de la Tienda
+        UUID storeUserId = store.getUser().getId();
+        User buyer = prev.stream()
+                .filter(m -> m.getSender() != null && !m.getSender().getId().equals(storeUserId))
+                .map(ChatMessage::getSender)
+                .findFirst()
+                .orElseGet(() -> prev.stream()
+                        .filter(m -> m.getReceiver() != null && !m.getReceiver().getId().equals(storeUserId))
+                        .map(ChatMessage::getReceiver)
+                        .findFirst()
+                        .orElse(null));
+
+        if (buyer != null && buyer.getId() != null) {
+            // Re-obtener desde BD para garantizar que tengamos el push_token fresco y no un objeto cacheado en stale estado
+            buyer = userRepository.findById(buyer.getId()).orElse(buyer);
+        }
 
         ChatMessage newMsg = ChatMessage.builder()
                 .conversationId(conversationId)
@@ -1058,6 +1072,7 @@ public class SellerController {
 
         // Enviar notificación Push al comprador (si tiene pushToken configurado)
         if (buyer != null && buyer.getPushToken() != null && !buyer.getPushToken().trim().isEmpty()) {
+            log.info("Enviando notificación Push a comprador: {} ({}) con token: {}", buyer.getEmail(), buyer.getId(), buyer.getPushToken());
             String title = store != null ? store.getBusinessName() : "Nuevo mensaje";
             String bodyText = saved.getContent() != null && !saved.getContent().isEmpty() 
                     ? saved.getContent() 
@@ -1066,6 +1081,8 @@ public class SellerController {
             data.put("type", "CHAT_MESSAGE");
             data.put("conversationId", conversationId.toString());
             pushNotificationService.sendPushNotification(buyer.getPushToken(), title, bodyText, data);
+        } else if (buyer != null) {
+            log.warn("El comprador {} ({}) NO tiene un push_token registrado en la base de datos", buyer.getEmail(), buyer.getId());
         }
 
         Map<String, Object> res = new HashMap<>();
