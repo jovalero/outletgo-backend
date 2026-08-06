@@ -568,7 +568,7 @@ public class SellerController {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "No tienes permiso para borrar este producto");
         }
 
-        boolean hasOrders = orderItemRepository.existsByProductId(product.getId());
+        boolean hasOrders = orderItemRepository.existsByVariationProductId(product.getId());
         if (hasOrders) {
             // Soft delete to preserve historical order items without triggering Hibernate exceptions
             product.setIsactive(false);
