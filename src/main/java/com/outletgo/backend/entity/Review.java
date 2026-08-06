@@ -65,5 +65,8 @@ public class Review {
         if (isVisible == null) {
             isVisible = true;
         }
+        if (imageUrls == null) {
+            imageUrls = new ArrayList<>();
+        }
     }
 }
