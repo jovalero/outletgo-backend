@@ -1,11 +1,29 @@
 -- =====================================================================
--- SCRIPT DE MIGRACIÓN Y CORRECCIÓN DE ESTADOS DE PEDIDOS (OUTLETGO DB)
+-- SCRIPT DE MIGRACIÓN Y CORRECCIÓN DE ESTADOS Y SLICES DE PEDIDOS (OUTLETGO DB)
 -- =====================================================================
--- Este script sincroniza el estado de la tabla `order_stores` (slices) 
--- con el estado real de la tabla `orders` (orden global) para corregir 
--- registros inconsistentes creados en versiones anteriores.
+-- Este script realiza un saneamiento único en PostgreSQL Supabase:
+-- 1. Crea automáticamente el slice `order_stores` para pedidos antiguos 
+--    que no registraron sub-pedido por tienda.
+-- 2. Sincroniza el estado de `order_stores` con el estado real de `orders`.
 
--- 1. Sincronizar slices al estado global de la orden para pedidos Cancelados
+-- A. Crear slices por defecto para órdenes que NO poseen ningún slice en `order_stores`
+INSERT INTO order_stores (id, order_id, store_id, status, subtotal_amount, commission_rate, commission_amount, net_amount, payout_status)
+SELECT 
+    gen_random_uuid(),
+    o.id,
+    o.store_id,
+    o.status,
+    COALESCE(o.product_subtotal, o.total_amount, 0),
+    0.10,
+    COALESCE(o.product_subtotal, o.total_amount, 0) * 0.10,
+    COALESCE(o.product_subtotal, o.total_amount, 0) * 0.90,
+    'PENDING'
+FROM orders o
+WHERE NOT EXISTS (
+    SELECT 1 FROM order_stores os WHERE os.order_id = o.id
+);
+
+-- B. Sincronizar slices al estado global de la orden para pedidos Cancelados
 UPDATE order_stores os
 SET status = 'CANCELLED'
 FROM orders o
@@ -13,7 +31,7 @@ WHERE os.order_id = o.id
   AND (o.status = 'CANCELED' OR o.status = 'CANCELLED')
   AND os.status <> 'CANCELLED';
 
--- 2. Sincronizar slices al estado global de la orden para pedidos Entregados
+-- C. Sincronizar slices al estado global de la orden para pedidos Entregados
 UPDATE order_stores os
 SET status = 'DELIVERED'
 FROM orders o
@@ -21,7 +39,7 @@ WHERE os.order_id = o.id
   AND o.status = 'DELIVERED'
   AND os.status <> 'DELIVERED';
 
--- 3. Sincronizar slices al estado global de la orden para pedidos Pagados
+-- D. Sincronizar slices al estado global de la orden para pedidos Pagados
 UPDATE order_stores os
 SET status = 'PAID'
 FROM orders o
@@ -30,7 +48,7 @@ WHERE os.order_id = o.id
   AND os.status <> 'PAID'
   AND os.status <> 'CANCELLED';
 
--- 4. Sincronizar slices al estado global de la orden para pedidos en Preparación
+-- E. Sincronizar slices al estado global de la orden para pedidos en Preparación
 UPDATE order_stores os
 SET status = 'PREPARING'
 FROM orders o
@@ -39,7 +57,7 @@ WHERE os.order_id = o.id
   AND os.status <> 'PREPARING'
   AND os.status <> 'CANCELLED';
 
--- 5. Sincronizar slices al estado global de la orden para pedidos Pendientes
+-- F. Sincronizar slices al estado global de la orden para pedidos Pendientes
 UPDATE order_stores os
 SET status = 'PENDING'
 FROM orders o
@@ -47,13 +65,3 @@ WHERE os.order_id = o.id
   AND o.status = 'PENDING'
   AND os.status <> 'PENDING'
   AND os.status <> 'CANCELLED';
-
--- Verificación final de inconsistencias remaining
-SELECT 
-    o.id AS order_id, 
-    o.status AS order_global_status, 
-    os.id AS slice_id, 
-    os.status AS slice_status
-FROM orders o
-JOIN order_stores os ON os.order_id = o.id
-WHERE o.status <> os.status;
