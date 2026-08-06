@@ -1143,7 +1143,8 @@ public class AdminController {
             List<OrderStore> allSlices = orderStoreRepository.findByOrderId(order.getId());
             boolean allCanceled = !allSlices.isEmpty() && allSlices.stream().allMatch(s -> s.getStatus() == Order.OrderStatus.CANCELED || s.getStatus() == Order.OrderStatus.CANCELLED);
             boolean anyStockIssue = allSlices.stream().anyMatch(s -> s.getStatus() == Order.OrderStatus.STOCK_ISSUE);
-            boolean allReady = !allSlices.isEmpty() && allSlices.stream().allMatch(s -> s.getStatus() == Order.OrderStatus.READY_FOR_PICKUP || s.getStatus() == Order.OrderStatus.CANCELED || s.getStatus() == Order.OrderStatus.CANCELLED);
+            boolean allCollected = !allSlices.isEmpty() && allSlices.stream().allMatch(s -> s.getStatus() == Order.OrderStatus.COLLECTED_BY_OUTLETGO || s.getStatus() == Order.OrderStatus.CANCELED || s.getStatus() == Order.OrderStatus.CANCELLED);
+            boolean allReady = !allSlices.isEmpty() && allSlices.stream().allMatch(s -> s.getStatus() == Order.OrderStatus.READY_FOR_PICKUP || s.getStatus() == Order.OrderStatus.COLLECTED_BY_OUTLETGO || s.getStatus() == Order.OrderStatus.CANCELED || s.getStatus() == Order.OrderStatus.CANCELLED);
 
             if (allCanceled) {
                 order.setStatus(Order.OrderStatus.CANCELLED);
@@ -1151,7 +1152,10 @@ public class AdminController {
             } else if (anyStockIssue) {
                 order.setStatus(Order.OrderStatus.STOCK_ISSUE);
                 orderRepository.save(order);
-            } else if (allReady && order.getStatus() == Order.OrderStatus.PREPARING) {
+            } else if (allCollected) {
+                order.setStatus(Order.OrderStatus.CONSOLIDATED);
+                orderRepository.save(order);
+            } else if (allReady && (order.getStatus() == Order.OrderStatus.PREPARING || order.getStatus() == Order.OrderStatus.PAID)) {
                 order.setStatus(Order.OrderStatus.READY_FOR_PICKUP);
                 orderRepository.save(order);
             } else if (newStatus == Order.OrderStatus.PAID && order.getStatus() == Order.OrderStatus.PENDING) {
