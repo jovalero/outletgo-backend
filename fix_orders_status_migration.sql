@@ -1,10 +1,10 @@
 -- =====================================================================
 -- SCRIPT DE MIGRACIÓN Y CORRECCIÓN DE ESTADOS Y SLICES DE PEDIDOS (OUTLETGO DB)
 -- =====================================================================
--- Este script realiza un saneamiento único en PostgreSQL Supabase:
--- 1. Crea automáticamente el slice `order_stores` para pedidos antiguos 
---    que no registraron sub-pedido por tienda.
--- 2. Sincroniza el estado de `order_stores` con el estado real de `orders`.
+
+-- 0. Eliminar restricciones CHECK obsoletas en PostgreSQL Supabase
+ALTER TABLE order_stores DROP CONSTRAINT IF EXISTS order_stores_status_check;
+ALTER TABLE orders DROP CONSTRAINT IF EXISTS orders_status_check;
 
 -- A. Crear slices por defecto para órdenes que NO poseen ningún slice en `order_stores`
 INSERT INTO order_stores (id, order_id, store_id, status, subtotal_amount, commission_rate, commission_amount, net_amount, payout_status)
