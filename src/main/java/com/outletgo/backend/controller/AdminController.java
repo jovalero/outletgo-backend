@@ -711,8 +711,12 @@ public class AdminController {
             }
         }
 
-        Double avgRating = s.getRatingAvg() != null ? Math.round(s.getRatingAvg() * 10.0) / 10.0 : 0.0;
-        Integer countRating = s.getRatingCount() != null ? s.getRatingCount() : 0;
+        Double avgRating = reviewRepository.getAverageRatingForStore(s.getId());
+        Long countRating = reviewRepository.countReviewsForStore(s.getId());
+
+        double realAvg = (countRating != null && countRating > 0 && avgRating != null) 
+                ? Math.round(avgRating * 10.0) / 10.0 : 0.0;
+        int realCount = (countRating != null) ? countRating.intValue() : 0;
 
         return SellerAccountResponse.builder()
                 .id(u.getId())
@@ -727,8 +731,8 @@ public class AdminController {
                         .description(s.getDescription())
                         .headerImageUrl(s.getHeaderImage())
                         .logoUrl(s.getHeaderImage())
-                        .ratingAvg(avgRating)
-                        .ratingCount(countRating)
+                        .ratingAvg(realAvg)
+                        .ratingCount(realCount)
                         .latitude(latitude)
                         .longitude(longitude)
                         .build())

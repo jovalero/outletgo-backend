@@ -197,6 +197,21 @@ public class StoreDataSeeder implements CommandLineRunner {
             }
         }
         
-        log.info("Datos de tiendas de prueba generados exitosamente.");
+        // Sincronizar promedio de calificación real para TODAS las tiendas en Supabase
+        log.info("Sincronizando promedios de calificación reales para todas las tiendas...");
+        for (Store s : storeRepository.findAll()) {
+            Double avg = reviewRepository.getAverageRatingForStore(s.getId());
+            Long count = reviewRepository.countReviewsForStore(s.getId());
+            if (count != null && count > 0 && avg != null) {
+                s.setRatingAvg(Math.round(avg * 10.0) / 10.0);
+                s.setRatingCount(count.intValue());
+            } else {
+                s.setRatingAvg(0.0);
+                s.setRatingCount(0);
+            }
+            storeRepository.save(s);
+        }
+
+        log.info("Datos de tiendas de prueba generados y sincronizados exitosamente.");
     }
 }
